@@ -42,7 +42,8 @@ class LatestFrameReader:
 
     reconnect_after_sec = 3.0
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, on_frame=None):
+        self.on_frame = on_frame
         self.url = url
         self.cap = self._open()
         self.frame, self.ts, self.seq, self.dropped = None, 0.0, 0, 0
@@ -50,7 +51,8 @@ class LatestFrameReader:
         self._last_read_seq = 0
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        threading.Thread(target=self._loop, daemon=True, name=f"reader:{url}").start()
+        self._thread = threading.Thread(target=self._loop, daemon=True, name=f"reader:{url}")
+        self._thread.start()
 
     def _open(self):
         src = int(self.url) if str(self.url).isdigit() else self.url   # «0» — веб-камера
@@ -59,6 +61,10 @@ class LatestFrameReader:
         return cap
 
     def _publish(self, f, ts: float) -> None:
+        if self._stop.is_set():
+            return
+        if self.on_frame is not None:
+            self.on_frame(f, ts)  # buffer capture frames independently of slow inference
         with self._lock:
             self.frame, self.ts = f, ts
             self.seq += 1
@@ -90,15 +96,17 @@ class LatestFrameReader:
 
     def close(self):
         self._stop.set()
-        self.cap.release()
+        if self.cap is not None:
+            self.cap.release()
+        self._thread.join(timeout=5)
 
 
 class VideoFileReader(LatestFrameReader):
     """Видеофайл как камера: кадры появляются с темпом исходного FPS, обработка берёт последний."""
 
-    def __init__(self, path: str, loop: bool = False):
+    def __init__(self, path: str, loop: bool = False, on_frame=None):
         self.loop = loop
-        super().__init__(path)
+        super().__init__(path, on_frame=on_frame)
         self.src_fps = self.cap.get(cv2.CAP_PROP_FPS) or 25.0
 
     def _open(self):
@@ -127,12 +135,12 @@ class VideoFileReader(LatestFrameReader):
 class ImageFolderReader(LatestFrameReader):
     """Папка кадров (имитация стоп-кадров) как камера: кадр за кадром с заданным FPS, по имени файла."""
 
-    def __init__(self, path: str, fps: float, loop: bool = False):
+    def __init__(self, path: str, fps: float, loop: bool = False, on_frame=None):
         self.files = list_images(path)
         if not self.files:
             raise FileNotFoundError(f"В папке нет изображений: {path}")
         self.src_fps, self.loop = fps, loop
-        super().__init__(path)
+        super().__init__(path, on_frame=on_frame)
 
     def _open(self):
         return None
@@ -152,7 +160,7 @@ class ImageFolderReader(LatestFrameReader):
             self._publish(f, ts)
 
     def close(self):
-        self._stop.set()
+        super().close()
 
 
 def _natural_key(p: Path):
@@ -221,15 +229,15 @@ def is_stream(source: str) -> bool:
     return bool(re.match(r"^(rtsp|rtsps|rtmp|http|https|udp|tcp)://", str(source))) or str(source).isdigit()
 
 
-def open_source(source: str, fps: float, offline: bool = False, loop: bool = False) -> tuple[Iterator[Frame], LatestFrameReader | None]:
+def open_source(source: str, fps: float, offline: bool = False, loop: bool = False, on_frame=None) -> tuple[Iterator[Frame], LatestFrameReader | None]:
     """Итератор кадров для конвейера и сам читатель (чтобы закрыть и взять dropped); в офлайне читателя нет."""
     source = str(source)
     if offline and not is_stream(source):
         return offline_frames(source, fps), None
     if is_stream(source):
-        reader = LatestFrameReader(source)
+        reader = LatestFrameReader(source, on_frame=on_frame)
     elif Path(source).is_dir():
-        reader = ImageFolderReader(source, fps, loop=loop)
+        reader = ImageFolderReader(source, fps, loop=loop, on_frame=on_frame)
     else:
-        reader = VideoFileReader(source, loop=loop)
+        reader = VideoFileReader(source, loop=loop, on_frame=on_frame)
     return fixed_rate(reader, fps), reader

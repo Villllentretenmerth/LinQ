@@ -58,11 +58,15 @@ class JournalSink:
         self._log_local("update", key, {"extra": extra})
         self._q.put(("update", key, {"extra": extra}))
 
+    def clip(self, key: str, path: Path, metadata: dict) -> None:
+        self._log_local("clip", key, {"path": str(path), "clip": metadata})
+        self._q.put(("clip", key, {"path": path, "metadata": metadata}))
+
     def end(self, key: str, ended_at: float) -> None:
         self._log_local("end", key, {"ended_at": _iso(ended_at)})
         self._q.put(("end", key, {"ended_at": ended_at}))
 
-    def close(self, timeout: float = 20.0) -> None:
+    def close(self, timeout: float | None = None) -> None:
         self._q.put(None)
         self._worker.join(timeout)
         self._jsonl.close()
@@ -124,6 +128,10 @@ class JournalSink:
         event_id = self.ids.get(key)
         if event_id is None:
             log.warning("журнал: %s для %s пропущено — событие не было создано", kind, key)
+            return
+        if kind == "clip":
+            c.upload_clip(event_id, str(data["path"]))
+            c.update_event(event_id, {"clip": data["metadata"]})
             return
         if kind == "update":
             if not self.patch_supported:

@@ -56,6 +56,11 @@ class JournalClient:
         r.raise_for_status()
         return r.json()
 
+    def update_event(self, event_id: int, extra: dict) -> dict:
+        r = self.s.patch(f"{self.base}/api/events/{event_id}", json={"extra": extra}, timeout=self.timeout)
+        r.raise_for_status()
+        return r.json()
+
     def end_event(self, event_id: int, ended_at) -> dict:
         r = self.s.post(f"{self.base}/api/events/{event_id}/end", json={"ended_at": _iso(ended_at)},
                         timeout=self.timeout)

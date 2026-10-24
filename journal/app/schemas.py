@@ -48,6 +48,12 @@ class EventEnd(BaseModel):
         return as_utc(v)
 
 
+class EventUpdate(BaseModel):
+    # Operator status has its own endpoint and audit trail; pipeline may only enrich extra.
+    model_config = ConfigDict(extra="forbid")
+    extra: dict = Field(default_factory=dict)
+
+
 class StatusIn(BaseModel):
     status: Status
     user: str
@@ -61,6 +67,11 @@ class StatusChangeOut(BaseModel):
     user: str
     comment: str | None
     at: datetime
+
+    @field_validator("at")
+    @classmethod
+    def _utc(cls, v):
+        return as_utc(v)
 
 
 class EventOut(BaseModel):
