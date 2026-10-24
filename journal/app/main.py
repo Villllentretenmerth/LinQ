@@ -17,7 +17,8 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from . import metrics, stats
-from .db import Base, as_utc, engine, get_session, utcnow
+from .db import Base, SessionLocal, as_utc, engine, get_session, utcnow
+from .demo import seed_startup_events
 from .live import manager
 from .models import Camera, Event, StatusChange
 from .schemas import EventDetail, EventEnd, EventIn, EventOut, EventPage, EventUpdate, StatusIn
@@ -27,11 +28,16 @@ WEB_DIR = Path(os.getenv("WEB_DIR", Path(__file__).resolve().parent.parent / "we
 DEFAULT_TZ = os.getenv("PLANT_TZ", "Europe/Moscow")  # часовой пояс предприятия для смен и графиков
 DEMO_MODE = os.getenv("DEMO_MODE", "1") == "1"       # кнопка «тестовое событие» в интерфейсе
 
+DEMO_SEED = os.getenv("DEMO_SEED", "1") == "1"
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    if DEMO_MODE and DEMO_SEED:
+        with SessionLocal() as session:
+            seed_startup_events(session)
     ticker = asyncio.create_task(metrics.demo_ticker()) if DEMO_MODE else None  # оживляет демо-узлы
     yield
     if ticker:

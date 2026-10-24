@@ -134,7 +134,7 @@ function renderFeed(freshId) {
       onkeydown: (ev) => { if (ev.key === 'Enter') selectEvent(e.id); },
     },
     el('div', { class: 'row' }, sevBadge(e.severity), statusChip(e.status)),
-    el('div', { class: 'title' }, e.pattern_name),
+    el('div', { class: 'title' }, `${e.extra?.demo ? '[Демо] ' : ''}${e.pattern_name}`),
     el('div', { class: 'meta' }, `${fmtTime(e.started_at)} · ${e.camera_id} · ${e.area}`))));
   }
   const n = state.feed.filter((e) => e.status === 'new').length;

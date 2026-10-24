@@ -29,8 +29,10 @@ def ev(**kw):
 @pytest.fixture(scope="module")
 def client():
     Base.metadata.drop_all(engine)
-    with TestClient(app) as c:
-        yield c
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("app.main.DEMO_SEED", False)
+        with TestClient(app) as c:
+            yield c
     Base.metadata.drop_all(engine)
 
 
