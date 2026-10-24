@@ -30,6 +30,8 @@ core/models/tpu/*/*.pt2
 clips/
 clips_raw/
 out/
+# Чужие датасеты для behavior_v1 и манифесты к ним (пути локальные): python -m core.tools.behavior_data
+data/
 core/data/
 *.pkl
 # Скачанные из Jupyter результаты замеров (итог — в README и docs/changes_cp3.md)

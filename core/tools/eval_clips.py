@@ -204,6 +204,7 @@ def main(argv=None):
     ap.add_argument("--debug", action="store_true", help="подписывать признаки (скорость, наклон…)")
     ap.add_argument("--cache", default=None, help="папка кэша выходов моделей (повторные прогоны без инференса)")
     ap.add_argument("--features", action="store_true", help="записать признаки треков по кадрам в features.csv")
+    ap.add_argument("--behavior", default=None, help="другая модель поведения (.onnx) или none — только правила карточек")
     ap.add_argument("--log-level", default="WARNING")
     a = ap.parse_args(argv)
     logging.basicConfig(level=a.log_level.upper(), format="%(levelname)-7s %(name)s: %(message)s")
@@ -214,6 +215,8 @@ def main(argv=None):
     cfg = yaml.safe_load(open(a.config, encoding="utf-8"))
     if a.patterns_dir:
         cfg["patterns_dir"] = a.patterns_dir
+    if a.behavior:
+        cfg.setdefault("models", {})["behavior"] = None if a.behavior.lower() == "none" else a.behavior
     models = Models(cfg, ROOT)
     cards = load_patterns(cfg, ROOT)
     out = Path(a.out)

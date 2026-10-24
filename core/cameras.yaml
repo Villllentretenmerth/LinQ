@@ -20,6 +20,8 @@ models:
   threads: 0                           # 0 — сколько решит ONNX Runtime
   pose: core/models/yolov8n-pose.onnx  # python core/export_models.py
   det: core/models/yolov8n.onnx        # COCO-детектор: техника и телефон, пока нет своей yolo-det
+  behavior: core/models/behavior_v1.onnx  # поведение по скелету (python -m core.tools.train_behavior); нет файла — правила карточек
+  behavior_classes: [run]              # какие классы брать у модели: падений в обучении пока мало (58 окон) — fall по правилу
   pose_conf: 0.15                      # слабые детекции только продлевают треки (новый трек ByteTrack — от 0.35)
   det_conf: 0.35
   class_conf: { "cell phone": 0.25 }   # телефон мелкий — свой порог

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .behavior import BehaviorModel
 from .features import floor_homography
 from .engine import CompileEnv, FrameContext, Obj, build_engine, load_cards
 from .geometry import Scene
@@ -72,6 +73,18 @@ class Models:
         self.det_every = max(1, int(m.get("det_every", 1)))
         self.backend = backend
 
+        # behavior_v1 — маленькая модель по окну скелета, на CPU (python -m core.tools.train_behavior)
+        self.behavior = None
+        beh_path = resolve(m.get("behavior"))
+        if beh_path is not None and beh_path.exists():
+            self.behavior = BehaviorModel(beh_path, threads=1)
+            if m.get("behavior_classes"):
+                self.behavior.enabled = set(m["behavior_classes"]) & set(self.behavior.classes)
+            log.info("модель поведения %s: классы %s, карточкам отдаёт %s", beh_path.name,
+                     ", ".join(self.behavior.classes), ", ".join(sorted(self.behavior.enabled)) or "ничего")
+        elif beh_path is not None:
+            log.warning("модель поведения не найдена (%s): поведение — по правилам-заглушкам карточек", beh_path)
+
 
 class CameraPipeline:
     def __init__(self, cam: dict, cfg: dict, models: Models, cards_raw: dict, sink, rep, offline: bool,
@@ -87,7 +100,10 @@ class CameraPipeline:
         self.source = src if "://" in src or src.isdigit() or Path(src).exists() else str(root / src)
 
         self.scene = Scene.from_config(cam.get("zones"), cam.get("lines"))
+        if models.behavior is not None and rep is not None:
+            models.behavior.timer = rep.timer
         env = CompileEnv(self.scene, models=set(),
+                         behavior={models.behavior.name: models.behavior} if models.behavior else {},
                          det_classes=models.det.classes if models.det else set(),
                          vehicle_classes=models.vehicle_classes, phone_classes=models.phone_classes)
         self.engine, skipped = build_engine(cam, cards_raw, env, self.tz, float(cfg.get("end_after_sec", 10)))
