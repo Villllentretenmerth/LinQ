@@ -12,3 +12,5 @@ pytest>=8                       # python -m pytest core/tests -q
 
 # Только для выгрузки моделей (python core/export_models.py): pip install ultralytics onnx onnxslim
 # Только на узле LinQ TPU (backend: linq): pytpu из поставки организаторов
+
+imageio-ffmpeg>=0.6,<0.7        # bundled FFmpeg: browser-compatible H.264 event clips
