@@ -1,0 +1,14 @@
+# Конвейер core/ (Python 3.10+, проверено на 3.12): pip install -r core/requirements.txt
+numpy>=1.26
+opencv-python>=4.8              # supervision 0.26 тянет именно opencv-python
+onnxruntime>=1.17
+supervision>=0.25,<0.27         # sv.ByteTrack; в 0.27+ он переехал в пакет trackers — тоже поддерживается
+pyyaml>=6.0
+requests>=2.31
+pillow>=10                      # подписи кириллицей на кадре-доказательстве
+psutil>=5.9                     # загрузка CPU в метриках узла (необязательно)
+tzdata; sys_platform == "win32" # часовые пояса для schedule карточек на Windows
+pytest>=8                       # python -m pytest core/tests -q
+
+# Только для выгрузки моделей (python core/export_models.py): pip install ultralytics onnx onnxslim
+# Только на узле LinQ TPU (backend: linq): pytpu из поставки организаторов

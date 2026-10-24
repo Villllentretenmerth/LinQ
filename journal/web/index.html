@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контроль ТБ — team_94</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Контроль ТБ <span class="muted">· team_94</span></div>
+  <nav class="tabs" role="tablist">
+    <a href="#operator" data-tab="operator" role="tab">Оператор</a>
+    <a href="#journal" data-tab="journal" role="tab">Журнал</a>
+    <a href="#analytics" data-tab="analytics" role="tab">Аналитика</a>
+    <a href="#system" data-tab="system" role="tab">Система</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="live" class="live off" title="Живая лента событий"><span class="dot"></span><span id="live-text">Лента: подключение…</span></span>
+    <button id="sound" class="btn ghost" type="button" aria-pressed="true">Звук: вкл</button>
+    <button id="simulate" class="btn" type="button" hidden>Тестовое событие</button>
+  </div>
+</header>
+
+<main>
+  <!-- Уровни 1–2: оператор и мастер (мастер = фильтр по своему участку) -->
+  <section id="tab-operator" class="tab" hidden>
+    <div id="critical-banner" class="banner" hidden role="alert"></div>
+    <div class="filters">
+      <label>Участок <select id="op-area"><option value="">Все участки</option></select></label>
+      <div class="seg" role="group" aria-label="Что показывать">
+        <button type="button" data-op-scope="new" class="on">Требуют реакции</button>
+        <button type="button" data-op-scope="all">Все за сутки</button>
+      </div>
+      <span id="op-count" class="muted"></span>
+    </div>
+    <div class="operator">
+      <ol id="feed" class="feed" aria-label="Лента событий"></ol>
+      <div id="op-detail" class="detail empty">Выберите событие в ленте</div>
+    </div>
+  </section>
+
+  <!-- Уровень 3: журнал для охраны труда и юристов -->
+  <section id="tab-journal" class="tab" hidden>
+    <form id="j-filters" class="filters wrap">
+      <label>С <input type="datetime-local" name="date_from"></label>
+      <label>По <input type="datetime-local" name="date_to"></label>
+      <label>Участок <select name="area"><option value="">Все</option></select></label>
+      <label>Камера <select name="camera_id"><option value="">Все</option></select></label>
+      <label>Нарушение <select name="pattern_id"><option value="">Все</option></select></label>
+      <label>Категория <select name="category">
+        <option value="">Все</option><option value="environment">Среда</option><option value="behavior">Поведение</option>
+        <option value="zone">Зона</option><option value="interaction">Взаимодействие</option><option value="attribute">Экипировка</option>
+      </select></label>
+      <label>Уровень <select name="severity"><option value="">Все</option><option value="critical">Критично</option><option value="warning">Предупреждение</option></select></label>
+      <label>Статус <select name="status"><option value="">Все</option></select></label>
+      <button class="btn" type="submit">Применить</button>
+      <button class="btn ghost" type="reset">Сбросить</button>
+      <a id="j-export" class="btn ghost" href="#" download>Выгрузить CSV</a>
+    </form>
+    <div class="card">
+      <table class="table" id="j-table">
+        <thead><tr><th>Начало</th><th>Нарушение</th><th>Уровень</th><th>Участок</th><th>Камера</th><th>Статус</th><th>Кто отреагировал</th><th class="num">До тревоги</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="pager"><button class="btn ghost" id="j-prev" type="button">← Назад</button><span id="j-page" class="muted"></span><button class="btn ghost" id="j-next" type="button">Вперёд →</button></div>
+    </div>
+    <aside id="drawer" class="drawer" hidden>
+      <button class="btn ghost close" id="drawer-close" type="button">Закрыть</button>
+      <div id="drawer-body" class="detail"></div>
+    </aside>
+  </section>
+
+  <!-- Уровень 4: аналитика для руководства -->
+  <section id="tab-analytics" class="tab" hidden>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Период">
+        <button type="button" data-days="7">7 дней</button>
+        <button type="button" data-days="30" class="on">30 дней</button>
+        <button type="button" data-days="90">90 дней</button>
+      </div>
+      <label>Участок <select id="an-area"><option value="">Все участки</option></select></label>
+    </div>
+    <div class="tiles" id="an-tiles"></div>
+    <div class="grid">
+      <div class="card span2" data-chart="daily"><div class="card-head"><h3>Нарушения по дням</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:260px"></div><div class="tablebox" hidden></div></div>
+      <div class="card" data-chart="patterns"><div class="card-head"><h3>Какие нарушения чаще всего</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:360px"></div><div class="tablebox" hidden></div></div>
+      <div class="card" data-chart="shifts"><div class="card-head"><h3>Участки по сменам</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:360px"></div><div class="tablebox" hidden></div></div>
+      <div class="card span2" data-chart="heatmap"><div class="card-head"><h3>Когда и где: участок × час суток</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:300px"></div><div class="tablebox" hidden></div></div>
+    </div>
+  </section>
+
+  <!-- Уровень 5: система для ИТ -->
+  <section id="tab-system" class="tab" hidden>
+    <div class="filters">
+      <label>Целевой FPS на камеру <select id="cap-fps"><option>5</option><option selected>10</option><option>15</option><option>25</option></select></label>
+      <label>Предел загрузки TPU <select id="cap-util"><option value="0.7">70%</option><option value="0.8" selected>80%</option><option value="0.9">90%</option></select></label>
+      <span id="sys-updated" class="muted"></span>
+    </div>
+    <p id="demo-note" class="notice" hidden>Сейчас показаны <b>демо-метрики</b> узлов. Реальные придут от конвейера (<code>client/metrics_client.py</code>) или из замера в Jupyter (<code>bench/linq_bench.py</code>).</p>
+    <div class="nodes" id="nodes"></div>
+    <div class="grid">
+      <div class="card" data-chart="tpu"><div class="card-head"><h3>Загрузка TPU за час</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:240px"></div><div class="tablebox" hidden></div></div>
+      <div class="card" data-chart="fps"><div class="card-head"><h3>FPS самого медленного потока за час</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:240px"></div><div class="tablebox" hidden></div></div>
+    </div>
+    <div class="tiles" id="sys-tiles" style="margin-top:14px"></div>
+    <div class="card">
+      <div class="card-head"><h3>Качество по правилам (по отметкам операторов, 30 дней)</h3></div>
+      <table class="table" id="sys-table">
+        <thead><tr><th>Нарушение</th><th class="num">Событий</th><th class="num">Проверено</th><th class="num">Precision</th><th class="num">До тревоги, p50</th><th class="num">До тревоги, p95</th><th class="num">Задержка, p50</th><th class="num">Задержка, p95</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/echarts.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

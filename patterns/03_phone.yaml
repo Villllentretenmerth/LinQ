@@ -1,0 +1,22 @@
+id: phone
+name: "Телефон при работе с оборудованием или при перемещении"
+category: [attribute, behavior]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: warning
+status: mvp
+target: person
+conditions:
+  - block: bodypart_crop
+    part: hand                   # для «у уха» — part: face_hand
+    model: crop_attr_v1
+    class: phone
+    min_score: 0.75
+    min_person_height_px: 180    # на дальних камерах сценарий отключается
+  - any_of:
+      - in_zone: { point: wrists, zone_tag: equipment }
+      - rule: "speed_heights_per_sec > 0.3"   # перемещается
+confirm: { window_sec: 1.0, n_of_m: [3, 5], hold_sec: 3 }
+zones: { include: [], exclude: [rest_area] }
+dedup: { per: track, cooldown_sec: 300 }
+notify: [master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-3, 3] }

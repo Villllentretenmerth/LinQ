@@ -1,0 +1,19 @@
+id: fall
+name: "Падение, неподвижность, признаки потери сознания"
+category: [behavior]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: mvp
+target: person
+conditions:
+  - block: person_sequence
+    model: behavior_v1
+    class: fall
+    min_score: 0.7
+    fallback_rule: "(torso_angle_deg > 60 and center_drop_heights > 0.4) or (height_vs_standing < 0.6 and stand_drop > 0.55)"   # второе — если пол откалиброван: резко стал вдвое ниже стоящего
+  - still: { seconds: 10, max_motion_heights: 0.05 }   # лежит без движения
+confirm: { window_sec: 1.5, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [], exclude: [repair_pit] }   # где работают лёжа
+dedup: { per: track, cooldown_sec: 120 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-10, 5] }

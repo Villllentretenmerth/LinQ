@@ -1,0 +1,20 @@
+id: climb_fence
+name: "Перелезание через ограждение"
+category: [zone, behavior]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: second
+target: person
+conditions:
+  - any_of:
+      - cross_line: { line_tag: fence, exclude_tag: gate }   # пересёк линию ограждения не в проходе
+      - block: person_sequence
+        model: behavior_v1
+        class: climb
+        min_score: 0.7
+  - in_zone: { point: feet, zone_tag: fence_area }
+confirm: { window_sec: 1.5, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [fence_area], exclude: [] }
+dedup: { per: track, cooldown_sec: 120 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 5] }

@@ -1,0 +1,23 @@
+{"file": "v02.mp4", "kind": "create", "pattern_id": "danger_zone", "track_id": 2, "confirm": 8.61, "start": 5.71, "confidence": 0.756, "zone": "Опасная зона", "features": {}}
+{"file": "v02.mp4", "kind": "end", "pattern_id": "danger_zone", "track_id": 2, "confirm": 14.12}
+{"file": "v03.mp4", "kind": "create", "pattern_id": "danger_zone", "track_id": 1, "confirm": 5.51, "start": 2.6, "confidence": 0.827, "zone": "Опасная зона", "features": {}}
+{"file": "v03.mp4", "kind": "end", "pattern_id": "danger_zone", "track_id": 1, "confirm": 10.81}
+{"file": "v04.mp4", "kind": "create", "pattern_id": "danger_zone", "track_id": 1, "confirm": 7.03, "start": 3.63, "confidence": 0.84, "zone": "Опасная зона", "features": {}}
+{"file": "v04.mp4", "kind": "end", "pattern_id": "danger_zone", "track_id": 1, "confirm": 11.33}
+{"file": "v05.mp4", "kind": "create", "pattern_id": "fall", "track_id": 2, "confirm": 5.02, "start": 4.42, "confidence": 0.736, "zone": null, "features": {"center_drop_heights": 1.085, "height_vs_standing": 0.44, "stand_drop": 0.514, "torso_angle_deg": 114.575}}
+{"file": "v05.mp4", "kind": "update", "pattern_id": "fall", "track_id": 2, "confirm": 14.1, "stage": "motionless"}
+{"file": "v05.mp4", "kind": "end", "pattern_id": "fall", "track_id": 2, "confirm": 20.83}
+{"file": "v06.mp4", "kind": "create", "pattern_id": "fall", "track_id": 1, "confirm": 8.73, "start": 7.83, "confidence": 0.683, "zone": null, "features": {"center_drop_heights": 0.88, "height_vs_standing": 0.484, "stand_drop": 0.463, "torso_angle_deg": 112.57}}
+{"file": "v06.mp4", "kind": "update", "pattern_id": "fall", "track_id": 1, "confirm": 17.43, "stage": "motionless"}
+{"file": "v06.mp4", "kind": "end", "pattern_id": "fall", "track_id": 1, "confirm": 25.03}
+{"file": "v07.mp4", "kind": "create", "pattern_id": "fall", "track_id": 1, "confirm": 8.53, "start": 7.63, "confidence": 0.805, "zone": null, "features": {"center_drop_heights": 0.232, "height_vs_standing": 0.458, "stand_drop": 0.612, "torso_angle_deg": 14.533}}
+{"file": "v07.mp4", "kind": "update", "pattern_id": "fall", "track_id": 1, "confirm": 17.93, "stage": "motionless"}
+{"file": "v07.mp4", "kind": "end", "pattern_id": "fall", "track_id": 1, "confirm": 27.23}
+{"file": "v08.mp4", "kind": "create", "pattern_id": "run", "track_id": 1, "confirm": 3.93, "start": 3.03, "confidence": 0.863, "zone": "Весь зал", "features": {"floor_speed_mps": 2.317, "speed_heights_per_sec": 0.54}}
+{"file": "v08.mp4", "kind": "end", "pattern_id": "run", "track_id": 1, "confirm": 7.43}
+{"file": "v09.mp4", "kind": "create", "pattern_id": "run", "track_id": 1, "confirm": 4.13, "start": 2.93, "confidence": 0.821, "zone": "Весь зал", "features": {"floor_speed_mps": 2.571, "speed_heights_per_sec": 1.132}}
+{"file": "v09.mp4", "kind": "end", "pattern_id": "run", "track_id": 1, "confirm": 11.33}
+{"file": "v10.mp4", "kind": "create", "pattern_id": "run", "track_id": 1, "confirm": 3.0, "start": 2.1, "confidence": 0.836, "zone": "Весь зал", "features": {"floor_speed_mps": 2.747, "speed_heights_per_sec": 1.002}}
+{"file": "v10.mp4", "kind": "end", "pattern_id": "run", "track_id": 1, "confirm": 9.11}
+{"file": "v16.mp4", "kind": "create", "pattern_id": "carry_wrong", "track_id": 1, "confirm": 3.5, "start": 2.6, "confidence": 0.88, "zone": null, "features": {"hips_height_ratio": 0.405, "knee_angle_deg": 156.316, "torso_angle_deg": 54.923}}
+{"file": "v16.mp4", "kind": "end", "pattern_id": "carry_wrong", "track_id": 1, "confirm": 5.3}

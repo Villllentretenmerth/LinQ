@@ -1,0 +1,17 @@
+id: fire_smoke
+name: "Открытый огонь или дым вне отведённых мест"
+category: [environment]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: second
+target: object
+conditions:
+  - block: object_zone
+    model: yolo-det
+    classes: [fire, smoke]
+    min_area_px: 400
+confirm: { window_sec: 1.0, n_of_m: [3, 4], hold_sec: 2 }   # пар и пыль дают одиночные вспышки
+zones: { include: [], exclude: [welding_post] }
+dedup: { per: zone, cooldown_sec: 300 }
+notify: [dispatcher, master, ot_specialist]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 5] }

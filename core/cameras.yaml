@@ -1,0 +1,62 @@
+# Конфиг конвейера: узел, модели, камеры. Зоны и линии — в пикселях кадра этой камеры.
+# Запуск: python -m core.run --config core/cameras.yaml --journal http://localhost:8000 [--offline]
+
+node:                                  # как узел виден на вкладке «Система» журнала
+  id: dev-cpu
+  name: "Ноутбук разработчика (CPU, ONNX Runtime)"
+  tpu_cores: 1
+  metrics_window_sec: 5
+
+plant_tz: Europe/Moscow                # для schedule карточек
+patterns_dir: patterns                 # карточки нарушений (относительно корня репозитория)
+lost_sec: 2.0                          # трек пропал дольше — его события закрываются (end_event)
+end_after_sec: 10                      # нарушение не видно столько секунд, а трек ещё в кадре — событие закрывается
+
+models:
+  # onnx      — целые модели на CPU (разработка);
+  # onnx_head — головы *_head.onnx на CPU + декодирование на numpy: тот же путь данных, что с TPU;
+  # linq      — программы TPU от организаторов (из *_head.onnx) через pytpu + то же декодирование.
+  backend: onnx
+  threads: 0                           # 0 — сколько решит ONNX Runtime
+  pose: core/models/yolov8n-pose.onnx  # python core/export_models.py
+  det: core/models/yolov8n.onnx        # COCO-детектор: техника и телефон, пока нет своей yolo-det
+  pose_conf: 0.15                      # слабые детекции только продлевают треки (новый трек ByteTrack — от 0.35)
+  det_conf: 0.35
+  class_conf: { "cell phone": 0.25 }   # телефон мелкий — свой порог
+  vehicle_classes: [car, truck]        # «техника» для vehicle_proximity
+  phone_classes: ["cell phone"]
+  det_every: 1                         # детектор на каждом N-м кадре (для разгрузки CPU/TPU)
+  linq:                                # для backend: linq
+    pose_program: core/models/yolov8n-pose_head.tpu
+    det_program: core/models/yolov8n_head.tpu
+    input_name: images                 # имя входа в ONNX
+    device_index: 0                    # какое из tpu.Device.list_devices()
+    module: null                       # или своя обёртка: "my_linq:make_infer" -> make_infer(program, **opts)
+    # Облако LinQ хакатона (как examples/example.ipynb): задачи через RabbitMQ, VPN должен быть включён.
+    # Программы — в /auto/cache/<логин>/ на сервере (скопировать из Jupyter), пути — как на сервере:
+    # module: bench.linq_cloud:make_infer
+    # pose_program: /auto/cache/hackathonXXXXX/yolov8n-pose_head.tpu
+    # det_program: /auto/cache/hackathonXXXXX/yolov8n_head.tpu
+    # host: 10.0.114.30
+    # timeout: 10
+
+cameras:
+  # Своё видео, папка кадров или камера. Координаты зон — по первому кадру:
+  # python -m core.tools.grid <видео или папка> сохранит кадр с сеткой координат.
+  - id: cam-01
+    name: "Камера 1, механический цех"
+    area: "Механический цех"
+    source: core/data/video.mp4        # RTSP-адрес, видеофайл или папка кадров (по имени файла); или --source
+    fps: 10                            # шаг обработки = frame_rate ByteTrack; для папки — и темп кадров
+    loop: false                        # видео/папку по кругу (для стенда)
+    patterns: [fall, run, danger_zone, vehicle_proximity, phone, climb_fence]
+    overrides:                         # поправки к карточкам только для этой камеры
+      danger_zone: { schedule: always }   # в карточке зона активна 07:55-12:00 — для показа включаем всегда
+    zones:                             # пример для кадра 1920×1080 — замените на свои
+      - name: "Стеллажи, ряд 3"
+        tags: [rack_forklift]
+        polygon: [[600, 600], [1100, 600], [1100, 1060], [600, 1060]]
+      - name: "Проезд техники"
+        tags: [tech_area]
+        polygon: [[0, 500], [1920, 500], [1920, 1080], [0, 1080]]
+    lines: []                          # пример: { name: "Ограждение", tags: [fence], points: [[100, 700], [800, 650]] }

@@ -1,0 +1,19 @@
+id: crawl_under
+name: "Пролезание под конвейером или подвешенным грузом"
+category: [behavior, zone]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: second
+target: person
+conditions:
+  - block: person_sequence
+    model: behavior_v1
+    class: crawl
+    min_score: 0.6
+    fallback_rule: "hips_height_ratio < 0.35"   # бёдра у пола относительно роста
+  - in_zone: { point: hips, zone_tag: under_conveyor }
+confirm: { window_sec: 1.0, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [under_conveyor, under_load], exclude: [] }
+dedup: { per: track, cooldown_sec: 120 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 5] }

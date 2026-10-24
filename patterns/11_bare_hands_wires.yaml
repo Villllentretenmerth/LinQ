@@ -1,0 +1,20 @@
+id: bare_hands_wires
+name: "Голые руки у проводов и электрощитов"
+category: [zone, attribute]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: second
+target: person
+conditions:
+  - in_zone: { point: wrists, zone_tag: electrical }
+  - block: bodypart_crop
+    part: hand
+    model: crop_attr_v1
+    class: bare_hand
+    min_score: 0.75
+    min_person_height_px: 180
+confirm: { window_sec: 0.5, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [electrical], exclude: [] }
+dedup: { per: track, cooldown_sec: 120 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-3, 3] }

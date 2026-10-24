@@ -1,0 +1,14 @@
+id: danger_zone
+name: "Нахождение в опасной зоне (временная зона у стеллажей)"
+category: [zone]            # только настройка: модель не нужна
+severity: warning
+status: mvp
+target: person
+conditions:
+  - in_zone: { point: feet, zone_tag: rack_forklift }
+confirm: { window_sec: 1.0, n_of_m: [2, 3], hold_sec: 2 }
+zones: { include: [rack_forklift], exclude: [] }
+dedup: { per: track, cooldown_sec: 120 }
+notify: [master]
+schedule: "07:55-12:00"     # пример из кейса: зона активна до 12:00
+evidence: { snapshot: true, clip_sec: [-3, 3] }

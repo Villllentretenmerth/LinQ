@@ -1,0 +1,20 @@
+id: fight
+name: "Драка на производстве"
+category: [interaction]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: second
+target: pair
+conditions:
+  - block: pair_interaction
+    other: person
+    max_distance_h: 1.2
+    model: pair_v1               # скелеты обоих участников за окно
+    class: fight
+    min_score: 0.7
+    fallback_rule: "wrist_speed_heights_per_sec > 3 and facing_each_other"
+confirm: { window_sec: 1.5, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [], exclude: [] }
+dedup: { per: track, cooldown_sec: 120 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 10] }

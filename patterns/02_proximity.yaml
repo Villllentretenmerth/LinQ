@@ -1,0 +1,17 @@
+id: vehicle_proximity
+name: "Опасное сближение с движущейся техникой"
+category: [interaction]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: mvp
+target: pair
+conditions:
+  - block: pair_interaction
+    other: vehicle               # forklift, vehicle из yolo-det
+    max_distance_h: 1.0          # расстояние от точки ног до маски техники, в ростах человека
+    other_min_speed: 0.2         # техника движется
+confirm: { window_sec: 0.5, n_of_m: [2, 3], hold_sec: 0 }   # быстро: критичный сценарий
+zones: { include: [], exclude: [loading_dock_service] }
+dedup: { per: track, cooldown_sec: 30 }
+notify: [dispatcher, master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 3] }

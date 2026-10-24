@@ -1,0 +1,23 @@
+id: smoking
+name: "Курение вне отведённых мест"
+category: [behavior, attribute]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: warning
+status: second
+target: person
+conditions:
+  - block: person_sequence
+    model: behavior_v1
+    class: hand_to_mouth         # ритм «рука ко рту»
+    min_score: 0.6
+  - block: bodypart_crop
+    part: face_hand
+    model: crop_attr_v1
+    class: cigarette
+    min_score: 0.6
+    min_person_height_px: 200
+confirm: { window_sec: 2.0, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [], exclude: [smoking_area] }
+dedup: { per: track, cooldown_sec: 600 }
+notify: [master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-5, 3] }

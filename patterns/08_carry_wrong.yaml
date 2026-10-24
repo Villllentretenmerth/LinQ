@@ -1,0 +1,18 @@
+id: carry_wrong
+name: "Переноска груза с нарушением правил (подъём спиной)"
+category: [behavior]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: warning
+status: backlog
+target: person
+conditions:
+  - block: person_sequence
+    model: behavior_v1
+    class: lift_back
+    min_score: 0.7
+    fallback_rule: "torso_angle_deg > 50 and knee_angle_deg > 150 and hips_height_ratio > 0.3"   # наклон при прямых ногах, бёдра высоко (не лежит)
+confirm: { window_sec: 1.5, n_of_m: [2, 3], hold_sec: 0 }
+zones: { include: [], exclude: [] }
+dedup: { per: track, cooldown_sec: 300 }
+notify: [master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-3, 3] }

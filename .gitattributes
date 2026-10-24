@@ -1,0 +1,16 @@
+# Текст в репозитории хранится с LF; на Windows git сам отдаёт CRLF (core.autocrlf)
+* text=auto
+
+# Скрипты и файлы для Linux-контейнеров — всегда LF
+*.sh text eol=lf
+*.Dockerfile text eol=lf
+Dockerfile text eol=lf
+
+# Бинарные файлы — без преобразований и без построчного diff
+*.onnx binary
+*.tpu binary
+*.mp4 binary
+*.pdf binary
+*.jpg binary
+*.png binary
+*.webp binary

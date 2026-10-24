@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Конвейер — слайды</title>
+<!-- Слайды о конвейере для docs/presentation.pdf. Печать в PDF:
+     msedge --headless --print-to-pdf=out.pdf --no-pdf-header-footer --virtual-time-budget=15000 slides_pipeline.html -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<style>
+  :root {
+    --navy: #14213d; --bg: #f7f8f5; --card: #fdfdfb; --line: #e2e5df; --blue: #2b6cb0;
+    --green: #a9c96b; --muted: #4a5568; --callout: #e9eef5; --on-dark: #c9d1dc; --code: #e6ebf2;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "IBM Plex Sans", sans-serif; color: var(--navy); }
+  .slide { width: 1920px; height: 1080px; padding: 132px 128px 0; position: relative; overflow: hidden;
+           page-break-after: always; break-after: page; background: var(--bg); }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .kicker { font-size: 26px; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; }
+  h1 { font-size: 64px; font-weight: 600; line-height: 1.15; margin-top: 10px; letter-spacing: -0.005em; }
+  .muted { color: var(--muted); }
+
+  /* титул */
+  .title { background: var(--navy); color: #fdfdfb; padding: 0 128px; }
+  .title .k { position: absolute; top: 132px; font-size: 30px; color: var(--green); }
+  .title h1 { position: absolute; top: 398px; left: 166px; font-size: 96px; line-height: 100px; margin: 0; }
+  .title .sub { position: absolute; top: 612px; font-size: 38px; line-height: 1.45; color: var(--on-dark); max-width: 1620px; }
+  .title .foot { position: absolute; top: 912px; font-size: 30px; color: var(--on-dark); }
+
+  /* поток конвейера */
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 64px; }
+  .step { flex: 1; background: var(--card); border: 1px solid var(--line); border-top: 7px solid var(--blue);
+          border-radius: 14px; padding: 34px 30px 30px; }
+  .step.tpu { background: var(--navy); border-color: var(--navy); border-top-color: var(--green); color: #fdfdfb; }
+  .step .n { font-size: 40px; font-weight: 600; color: var(--blue); line-height: 1; }
+  .step.tpu .n { color: var(--green); }
+  .step h3 { font-size: 30px; font-weight: 600; margin-top: 22px; line-height: 1.2; }
+  .step p { font-size: 23px; line-height: 1.45; color: var(--muted); margin-top: 16px; }
+  .step.tpu p { color: var(--on-dark); }
+  .step code { font-family: "JetBrains Mono", monospace; font-size: 20px; }
+  .arrow { width: 54px; display: flex; align-items: center; justify-content: center; font-size: 38px; color: var(--blue); }
+  .callout { margin-top: 56px; background: var(--callout); border-left: 7px solid var(--blue); border-radius: 0 12px 12px 0;
+             padding: 30px 44px; font-size: 30px; line-height: 1.5; }
+  .callout b { font-weight: 600; }
+
+  /* подтверждение */
+  .cols { display: grid; grid-template-columns: 1fr 760px; gap: 56px; margin-top: 56px; }
+  .chain { display: flex; flex-direction: column; gap: 22px; }
+  .row { display: grid; grid-template-columns: 56px 1fr; gap: 20px; align-items: start; }
+  .row .i { width: 56px; height: 56px; border-radius: 50%; background: var(--blue); color: #fdfdfb; font-size: 28px;
+            font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .row h3 { font-size: 30px; font-weight: 600; line-height: 1.25; }
+  .row p { font-size: 24px; line-height: 1.45; color: var(--muted); margin-top: 6px; }
+  .dark { background: var(--navy); border-radius: 18px; padding: 40px 44px; color: var(--code); }
+  .dark .file { font-family: "JetBrains Mono", monospace; font-size: 25px; color: var(--green); }
+  .tl { margin-top: 26px; display: flex; flex-direction: column; gap: 22px; }
+  .tl .e { display: grid; grid-template-columns: 120px 1fr; gap: 18px; }
+  .tl .t { font-family: "JetBrains Mono", monospace; font-size: 25px; color: var(--green); padding-top: 2px; }
+  .tl .d { font-size: 25px; line-height: 1.42; color: var(--code); }
+  .tl .d b { color: #fdfdfb; font-weight: 600; }
+  .times { margin-top: 44px; display: flex; gap: 18px; }
+  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 24px; font-size: 25px; }
+  .chip b { color: var(--blue); font-weight: 600; }
+
+  /* TPU */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 56px; }
+  .panel { border-radius: 18px; padding: 40px 44px 36px; }
+  .panel.light { background: var(--card); border: 1px solid var(--line); border-top: 7px solid var(--blue); }
+  .panel h3 { font-size: 34px; font-weight: 600; }
+  .panel.dark h3 { color: #fdfdfb; }
+  .panel .tag { font-size: 24px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); }
+  .panel.dark .tag { color: var(--green); }
+  .panel ul { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .panel li { font-size: 26px; line-height: 1.42; padding-left: 30px; position: relative; color: var(--muted); }
+  .panel.dark li { color: var(--code); }
+  .panel li::before { content: ""; position: absolute; left: 0; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); }
+  .panel.dark li::before { background: var(--green); }
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+  .status div { font-size: 25px; line-height: 1.5; }
+  .status b { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- титул: тот же, что в исходной презентации, без «Чек-поинт 2» -->
+<section class="slide title">
+  <div class="k">Кейс LinQ · Хакатон «Открой Моспром» 2026</div>
+  <h1>Контроль нарушений техники<br>безопасности по видео на LinQ TPU</h1>
+  <div class="sub">Веб-сервис, который в реальном времени находит опасное поведение работников и присылает одно точное оповещение на одно нарушение</div>
+  <div class="foot">Команда team_94</div>
+</section>
+
+<!-- конвейер -->
+<section class="slide">
+  <div class="kicker">Конвейер</div>
+  <h1>От кадра до события в журнале</h1>
+  <div class="flow">
+    <div class="step">
+      <div class="n">1</div>
+      <h3>Кадры</h3>
+      <p>RTSP-камера, видео или папка стоп&#8209;кадров. Берём свежий кадр — задержка не копится</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step tpu">
+      <div class="n">2</div>
+      <h3>Модели на LinQ TPU</h3>
+      <p><code>yolov8n-pose</code> — люди и 17 точек скелета; <code>yolov8n</code> — техника и телефоны</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="n">3</div>
+      <h3>Трекинг</h3>
+      <p>ByteTrack: у каждого человека свой ID и история — скорость, наклон корпуса, неподвижность</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="n">4</div>
+      <h3>Карточки нарушений</h3>
+      <p>YAML из <code>patterns/</code>: зоны, расписание, условия, подтверждение во времени</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="n">5</div>
+      <h3>Журнал</h3>
+      <p>Одно событие на нарушение и кадр с рамкой; метрики узла — на вкладке «Система»</p>
+    </div>
+  </div>
+  <div class="callout"><b>Модели работают один раз на кадр</b>, все карточки читают их общие выходы.
+    Новое нарушение — новая карточка, конвейер не меняется.</div>
+</section>
+
+<!-- подтверждение и дедупликация -->
+<section class="slide">
+  <div class="kicker">Подтверждение и дедупликация</div>
+  <h1>Одно нарушение — одно оповещение</h1>
+  <div class="cols">
+    <div class="chain">
+      <div class="row"><div class="i">1</div><div><h3>Расписание и зоны</h3>
+        <p>Карточка работает только там и тогда, где нужно: зона у стеллажей — до 12:00</p></div></div>
+      <div class="row"><div class="i">2</div><div><h3>N из M окон</h3>
+        <p>Скользящие окна 0,5–2 с: тревога, только если нарушение видно в N окнах из M. Одиночный кадр её не вызовет</p></div></div>
+      <div class="row"><div class="i">3</div><div><h3>Удержание</h3>
+        <p>Нарушение должно продлиться hold_sec: прошёл мимо зоны — не нарушение</p></div></div>
+      <div class="row"><div class="i">4</div><div><h3>Без повторов</h3>
+        <p>Одно событие на трек и блокировка повторов по «камера + зона + тип» — даже если трекер сменил ID</p></div></div>
+    </div>
+    <div class="dark">
+      <div class="file">пример: падение</div>
+      <div class="tl">
+        <div class="e"><div class="t">0 с</div><div class="d">человек стоит — копится история трека</div></div>
+        <div class="e"><div class="t">3 с</div><div class="d">падает: корпус наклонён больше 60°, центр тела опустился больше чем на 0,4 роста</div></div>
+        <div class="e"><div class="t">5 с</div><div class="d"><b>тревога диспетчеру</b> — событие и кадр в журнале</div></div>
+        <div class="e"><div class="t">13,5 с</div><div class="d">лежит без движения 10 с — <b>признак потери сознания</b>, второй этап события</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="times">
+    <div class="chip">Время до тревоги:</div>
+    <div class="chip">сближение с техникой <b>~1 с</b></div>
+    <div class="chip">падение <b>~2 с</b></div>
+    <div class="chip">бег <b>~2,5 с</b></div>
+    <div class="chip">опасная зона <b>~3 с</b></div>
+  </div>
+</section>
+
+<!-- LinQ TPU -->
+<section class="slide">
+  <div class="kicker">LinQ TPU</div>
+  <h1>Что считает ускоритель, а что — процессор</h1>
+  <div class="split">
+    <div class="panel dark">
+      <div class="tag">LinQ TPU</div>
+      <h3>Нейросети</h3>
+      <ul>
+        <li>yolov8n-pose и yolov8n — есть в списке моделей, поддерживаемых SDK LinQ</li>
+        <li>ONNX со статическим входом 640×640, batch 1, без NMS в графе</li>
+        <li>Граф обрезан перед декодированием головы: на TPU только свёртки, int8 не портит координаты</li>
+      </ul>
+    </div>
+    <div class="panel light">
+      <div class="tag">CPU узла</div>
+      <h3>Всё остальное</h3>
+      <ul>
+        <li>Подготовка кадра, декодирование выходов, NMS</li>
+        <li>ByteTrack, признаки скелета, карточки нарушений</li>
+        <li>События в журнал и метрики: FPS на поток, задержка каждой модели, загрузка TPU, сколько ещё камер выдержит узел</li>
+      </ul>
+    </div>
+  </div>
+  <div class="status">
+    <div><b>Готово:</b> конвейер от видео до журнала, 6 сценариев на предобученных моделях, журнал и дашборд, 23 автотеста логики</div>
+    <div class="muted"><b style="color: var(--navy)">Дальше:</b> замер на TPU, свои модели поведения и экипировки — для огня, каски, курения, драки</div>
+  </div>
+</section>
+
+</body>
+</html>

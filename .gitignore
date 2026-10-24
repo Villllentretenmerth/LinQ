@@ -1,0 +1,54 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ---------- Журнал: локальная база и загруженные кадры/клипы ----------
+journal/journal.db
+*.db
+*.sqlite3
+journal/media/
+media/
+
+# ---------- Данные и большие артефакты ----------
+# Калибровочные кадры для int8 (сотни МБ) — собираются заново: python -m core.tools.make_calib
+*.npy
+*.npz
+# Промежуточные файлы компиляции SDK (оптимизированный и квантованный граф);
+# готовые программы *.tpu, пороги калибровки и отчёты остаются в репозитории
+core/models/tpu/*/opt.onnx
+core/models/tpu/*/*.qm.onnx
+core/models/tpu/*/*.pt2
+# Исходные ролики, кэш выходов моделей и результаты прогонов eval_clips / конвейера
+clips/
+clips_raw/
+out/
+core/data/
+*.pkl
+# Скачанные из Jupyter результаты замеров (итог — в README и docs/changes_cp3.md)
+bench_result*.json
+bench_*.json
+
+# ---------- Секреты и доступы (VPN, ключи) — никогда в гит ----------
+*.ovpn
+.env
+.env.*
+*.pem
+*.key
+
+# ---------- IDE и система ----------
+.vscode/
+.idea/
+.claude/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

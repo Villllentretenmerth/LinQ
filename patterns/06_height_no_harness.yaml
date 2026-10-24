@@ -1,0 +1,19 @@
+id: height_no_harness
+name: "Работа на высоте без страховочной привязи"
+category: [zone, attribute]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: critical
+status: backlog
+target: person
+conditions:
+  - in_zone: { point: feet, zone_tag: height }
+  - block: bodypart_crop
+    part: torso
+    model: crop_attr_v1
+    class: no_harness
+    min_score: 0.8
+confirm: { window_sec: 2.0, n_of_m: [3, 4], hold_sec: 5 }
+zones: { include: [height], exclude: [] }
+dedup: { per: track, cooldown_sec: 600 }
+notify: [dispatcher, master, ot_specialist]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-3, 3] }

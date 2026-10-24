@@ -1,0 +1,28 @@
+id: carry_no_ppe
+name: "Пронос груза без спецодежды"
+category: [behavior, attribute]            # environment | behavior | zone | interaction | attribute; несколько = составное
+severity: warning
+status: second
+target: person
+conditions:                      # составной паттерн: оба условия на одном треке
+  - block: person_sequence
+    model: behavior_v1
+    class: carry
+    min_score: 0.6
+  - any_of:
+      - block: bodypart_crop
+        part: torso
+        model: crop_attr_v1
+        class: no_vest
+        min_score: 0.75
+      - block: bodypart_crop
+        part: head
+        model: crop_attr_v1
+        class: no_helmet
+        min_score: 0.75
+confirm: { window_sec: 1.5, n_of_m: [3, 4], hold_sec: 0 }
+zones: { include: [], exclude: [office_area] }
+dedup: { per: track, cooldown_sec: 600 }
+notify: [master]
+schedule: always
+evidence: { snapshot: true, clip_sec: [-3, 3] }

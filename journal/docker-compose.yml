@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: journal
+      POSTGRES_USER: journal
+      POSTGRES_PASSWORD: journal        # для стенда хакатона; в проде — секрет
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U journal -d journal"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://journal:journal@db:5432/journal
+      MEDIA_DIR: /data/media
+      PLANT_TZ: Europe/Moscow
+    ports: ["8000:8000"]
+    volumes:
+      - media:/data/media
+      - ../patterns:/patterns:ro       # карточки нужны для демо-данных
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata: {}
+  media: {}
