@@ -200,6 +200,7 @@ function renderDetail(box, e, onChange) {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: st, user: who.value || 'оператор', comment: comment.value || null }),
         });
+        beep(); // only after the server accepted the operator decision
         box.dataset.submitting = '0';
         if (box.dataset.eventId === String(e.id)) {
           const field = $('.review-comment', box);
@@ -220,13 +221,16 @@ function renderDetail(box, e, onChange) {
   box.replaceChildren(...[
     el('div', { class: 'row', style: 'display:flex;gap:8px;align-items:center' }, sevBadge(e.severity), statusChip(e.status)),
     el('h2', {}, e.pattern_name),
-    shot,
+    e.extra?.dataset ? el('p', { class: 'muted' }, e.extra.description, ' Источник: ',
+      el('a', { href: e.extra.dataset.source_url, target: '_blank', rel: 'noopener noreferrer' }, e.extra.dataset.dataset),
+      ` · ${e.extra.dataset.authors} · ${e.extra.dataset.license}`) : null,
     clip,
+    shot,
     e.extra?.followup ? el('p', { class: 'event-followup' },
       `Уточнение: ${e.extra.followup.condition || 'Обнаружено продолжение события'}`) : null,
     el('dl', { class: 'facts' },
       fact('Камера', e.camera_id), fact('Участок', e.area), fact('Зона', e.zone || '—'),
-      fact('Трек', e.track_id ?? '—'), fact('Уверенность', fmtPct(e.confidence)), fact('Категории', cats),
+      fact('Трек', e.track_id ?? '—'), fact('Уверенность', e.extra?.dataset ? 'Учебная разметка' : fmtPct(e.confidence)), fact('Категории', cats),
       fact('Начало', fmtTime(e.started_at)), fact('Тревога', fmtTime(e.confirmed_at)),
       fact('Время до тревоги', fmtMs(e.time_to_alert_ms)), fact('Задержка конвейера', fmtMs(e.pipeline_latency_ms)),
       fact('Окончание', fmtTime(e.ended_at)),
@@ -295,7 +299,8 @@ function onLive(msg) {
     if (state.opArea && e.area !== state.opArea) return;
     if (!state.feed.some((x) => x.id === e.id)) state.feed.unshift(e);
     renderFeed(e.id);
-    if (e.severity === 'critical') { showBanner(e); beep(); }
+    if (e.severity === 'critical') showBanner(e);
+    beep();
     return;
   }
   const i = state.feed.findIndex((x) => x.id === e.id);
@@ -308,20 +313,31 @@ function onLive(msg) {
 }
 
 let actx;
-function beep() {
-  if (!state.sound) return;
+async function unlockSound() {
+  if (!state.sound) return false;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    const t = actx.currentTime;
-    [[0, 880], [0.25, 660]].forEach(([d, f]) => {
-      const o = actx.createOscillator(); const g = actx.createGain();
-      o.frequency.value = f; o.connect(g); g.connect(actx.destination);
-      g.gain.setValueAtTime(0.0001, t + d);
-      g.gain.exponentialRampToValueAtTime(0.2, t + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.2);
-      o.start(t + d); o.stop(t + d + 0.22);
-    });
-  } catch { /* браузер не дал звук без действия пользователя */ }
+    if (actx.state === 'suspended') await actx.resume();
+    return actx.state === 'running';
+  } catch { return false; }
+}
+async function beep() {
+  if (!state.sound || !(await unlockSound()) || !state.sound) return;
+  // Clock-style cuckoo: a descending major third, short breathy notes, 0.6 s total.
+  const t = actx.currentTime;
+  [[0, 784], [0.29, 622]].forEach(([delay, frequency]) => {
+    const tone = actx.createOscillator();
+    const gain = actx.createGain();
+    tone.type = 'sine';
+    tone.frequency.setValueAtTime(frequency * 1.025, t + delay);
+    tone.frequency.exponentialRampToValueAtTime(frequency, t + delay + 0.07);
+    tone.connect(gain); gain.connect(actx.destination);
+    gain.gain.setValueAtTime(0, t + delay);
+    gain.gain.linearRampToValueAtTime(0.32, t + delay + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.24);
+    tone.start(t + delay); tone.stop(t + delay + 0.26);
+    tone.onended = () => { tone.disconnect(); gain.disconnect(); };
+  });
 }
 
 /* ---------- 3. Журнал ---------- */
@@ -626,6 +642,8 @@ async function loadSystem() {
 
 /* ---------- запуск ---------- */
 function bind() {
+  document.addEventListener('pointerdown', unlockSound);
+  document.addEventListener('keydown', unlockSound);
   window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
   $('#op-area').addEventListener('change', (e) => { state.opArea = e.target.value; storeSet('opArea', state.opArea); loadFeed().catch(showError); });
   $$('[data-op-scope]').forEach((b) => b.addEventListener('click', () => {
@@ -637,6 +655,7 @@ function bind() {
     state.sound = !state.sound;
     e.target.textContent = state.sound ? 'Звук: вкл' : 'Звук: выкл';
     e.target.setAttribute('aria-pressed', String(state.sound));
+    if (state.sound) beep();
   });
   $('#simulate').addEventListener('click', () => api('/api/dev/simulate', {}, { method: 'POST' }).catch(showError));
   $('#j-filters').addEventListener('submit', (e) => { e.preventDefault(); state.jOffset = 0; loadJournal().catch(showError); });

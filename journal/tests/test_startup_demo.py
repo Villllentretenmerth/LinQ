@@ -20,16 +20,21 @@ def test_startup_samples_and_restart(tmp_path, monkeypatch):
     try:
         with TestClient(main.app) as client:
             page = client.get('/api/events', params={'status': 'new'}).json()
-            assert page['total'] == 10
-            assert len({e['pattern_id'] for e in page['items']}) == 10
+            assert page['total'] == 20
+            assert len({e['clip_path'] for e in page['items']}) == 20
             assert all(e['extra']['demo'] for e in page['items'])
+            for event in page['items']:
+                assert client.get(event['snapshot_path']).status_code == 200
+                response = client.get(event['clip_path'], headers={'Range': 'bytes=0-63'})
+                assert response.status_code == 206
+                assert b'ftyp' in response.content
             eid = page['items'][0]['id']
             assert client.post(f'/api/events/{eid}/status', json={
                 'status': 'false_alarm', 'user': 'operator', 'comment': 'Учебная проверка'
             }).status_code == 200
         with TestClient(main.app) as client:
-            assert client.get('/api/events').json()['total'] == 10
-            assert client.get('/api/events', params={'status': 'new'}).json()['total'] == 9
+            assert client.get('/api/events').json()['total'] == 20
+            assert client.get('/api/events', params={'status': 'new'}).json()['total'] == 19
             detail = client.get(f'/api/events/{eid}').json()
             assert detail['status'] == 'false_alarm'
             assert detail['history'][0]['comment'] == 'Учебная проверка'

@@ -1,55 +1,52 @@
-"""Ten persistent sample events for the first operator-screen visit."""
+"""Persistent educational events with bundled, attributed dataset videos."""
+import json
 from datetime import timedelta
-
+from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-
 from .db import utcnow
 from .models import Camera, Event
 
-CASES = (
-    ('fall', 'Падение человека', 'critical', 'Механический цех'),
-    ('run', 'Бег в зоне движения техники', 'warning', 'Склад отгрузки'),
-    ('danger_zone', 'Вход в опасную зону', 'critical', 'Механический цех'),
-    ('vehicle_proximity', 'Опасное сближение с погрузчиком', 'critical', 'Склад отгрузки'),
-    ('phone', 'Использование телефона при работе', 'warning', 'Механический цех'),
-    ('climb_fence', 'Перелезание через ограждение', 'critical', 'Периметр'),
-    ('no_helmet', 'Отсутствие защитной каски', 'warning', 'Склад отгрузки'),
-    ('smoking', 'Курение в запрещённой зоне', 'warning', 'Сварочный участок'),
-    ('fire_smoke', 'Дым или открытый огонь', 'critical', 'Сварочный участок'),
-    ('height_no_harness', 'Работа на высоте без страховки', 'critical', 'Электроучасток'),
-)
+MEDIA = Path(__file__).resolve().parents[1] / 'web' / 'dataset-media'
 
 
 def seed_startup_events(session):
-    """Stable IDs prevent duplicates and preserve operator decisions across restarts."""
-    now = utcnow()
-    created = 0
-    for index, (pattern, name, severity, area) in enumerate(CASES, 1):
-        uid = f'startup-demo-v1-{index:02d}'
+    manifest = MEDIA / 'manifest.json'
+    if not manifest.exists():
+        return 0
+    cases = json.loads(manifest.read_text())
+    # Retire only our obsolete, untouched placeholders. Real events and reviews are preserved.
+    for old in session.scalars(select(Event).where(Event.event_uid.like('startup-demo-v1-%'))):
+        if old.extra.get('startup_demo') and old.status == 'new' and not old.history and not old.clip_path:
+            session.delete(old)
+    now, created = utcnow(), 0
+    for index, case in enumerate(cases):
+        key = case['key']
+        if not all((MEDIA / f'{key}.{ext}').is_file() for ext in ('mp4', 'jpg')):
+            continue
+        uid = f'dataset-demo-v1-{key}'
         if session.scalar(select(Event.id).where(Event.event_uid == uid)) is not None:
             continue
         try:
-            # A savepoint makes concurrent server startup safe without losing other events.
             with session.begin_nested():
-                camera_id = f'demo-cam-{index:02d}'
+                camera_id = f'dataset-{case["pattern_id"]}'
                 if session.get(Camera, camera_id) is None:
-                    session.add(Camera(id=camera_id, name=f'Демо-камера {index}', area=area,
-                                       source='demo'))
+                    session.add(Camera(id=camera_id, name=case['dataset'], area='Учебные видеозаписи', source=case['source_url']))
                     session.flush()
-                confirmed = now - timedelta(minutes=10 - index)
+                confirmed = now - timedelta(seconds=(len(cases) - index) * 10)
                 session.add(Event(
-                    event_uid=uid, pattern_id=pattern, pattern_name=name, categories=[],
-                    severity=severity, camera_id=camera_id, area=area, track_id=index,
-                    started_at=confirmed - timedelta(seconds=2), confirmed_at=confirmed,
-                    frame_ts=confirmed, received_at=confirmed, confidence=0.9, status='new',
-                    extra={'demo': True, 'startup_demo': True,
-                           'description': 'Учебный пример для проверки интерфейса. Не результат детектора.'},
+                    event_uid=uid, pattern_id=case['pattern_id'], pattern_name=case['name'],
+                    categories=['behavior'], severity='critical' if case['pattern_id'] == 'fall' else 'warning',
+                    camera_id=camera_id, area='Учебные видеозаписи',
+                    started_at=confirmed, confirmed_at=confirmed, frame_ts=confirmed,
+                    received_at=confirmed, confidence=1, status='new',
+                    clip_path=f'/ui/dataset-media/{key}.mp4', snapshot_path=f'/ui/dataset-media/{key}.jpg',
+                    extra={'demo': True, 'startup_demo': True, 'dataset': case,
+                           'description': case['description'], 'clip': {'state': 'ready', 'duration_sec': case['duration_sec']}},
                 ))
                 session.flush()
             created += 1
         except IntegrityError:
-            # Only ignore a race which actually created this same sample.
             if session.scalar(select(Event.id).where(Event.event_uid == uid)) is None:
                 raise
     session.commit()
