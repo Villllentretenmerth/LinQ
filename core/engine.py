@@ -130,6 +130,21 @@ class RuleCond(Cond):
         return True, {"features": {n: _r(f.get(n)) for n in sorted(self.rule.names)}, "rules": [self.rule.expr]}
 
 
+class BehaviorCond(Cond):
+    """Класс поведения от модели (behavior_v1) по окну скелета трека: вероятность класса >= min_score."""
+
+    def __init__(self, model, cls: str, min_score: float):
+        self.model, self.cls, self.min_score = model, cls, float(min_score)
+        self.label = f"{getattr(model, 'name', 'behavior')}:{cls}≥{self.min_score:g}"
+
+    def __call__(self, ctx, p):
+        probs = self.model.probs(p.hist)
+        s = (probs or {}).get(self.cls, 0.0)
+        if s < self.min_score:
+            return False, {}
+        return True, {"score": s, "features": {f"p_{self.cls}": _r(s)}, "rules": [self.label]}
+
+
 class InZone(Cond):
     def __init__(self, point: str, tag: str):
         body_point_names = {"feet", "wrists", "hips", "head", "center"}
@@ -255,7 +270,8 @@ def _box(b) -> list[float]:
 @dataclass
 class CompileEnv:
     scene: Scene
-    models: set[str] = field(default_factory=set)       # обученные модели поведения/атрибутов (пока пусто)
+    models: set[str] = field(default_factory=set)       # обученные модели атрибутов (пока пусто)
+    behavior: dict = field(default_factory=dict)        # модели поведения: имя -> объект с .classes и .probs(hist)
     det_classes: set[str] = field(default_factory=set)  # что умеет yolo-det (COCO: car, truck, cell phone...)
     vehicle_classes: set[str] = field(default_factory=lambda: {"car", "truck"})
     phone_classes: set[str] = field(default_factory=lambda: {"cell phone"})
@@ -297,8 +313,10 @@ def compile_condition(c: dict, env: CompileEnv) -> Cond:
     block = c.get("block")
     model = c.get("model")
     if block == "person_sequence":
-        if model in env.models:
-            raise Unsupported(f"модель {model} пока не подключена к конвейеру")
+        bm = env.behavior.get(model)
+        # класса нет в модели (или он выключен в конфиге узла) — работает fallback_rule
+        if bm is not None and c.get("class") in getattr(bm, "enabled", bm.classes):
+            return BehaviorCond(bm, c["class"], c.get("min_score", 0.7))
         if c.get("fallback_rule"):
             try:
                 return RuleCond(Rule(c["fallback_rule"]), f"{c.get('class')}≈({c['fallback_rule']})")
