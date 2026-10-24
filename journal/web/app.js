@@ -21,7 +21,7 @@ let TZ = 'Europe/Moscow';
 const state = {
   feed: [], selected: null, opScope: 'new', opArea: '', banner: null,
   jOffset: 0, jTotal: 0, jLimit: 50,
-  days: 30, anArea: '', sound: true, charts: {}, tables: {},
+  days: 30, anArea: '', anSource: 'real', sound: true, charts: {}, tables: {},
 };
 
 /* ---------- утилиты ---------- */
@@ -424,13 +424,16 @@ function renderTable(key) {
 async function loadAnalytics() {
   const sec = $('#tab-analytics');
   sec.classList.add('loading');                                   // держим прошлую картинку, без мигания
-  const p = { date_from: new Date(Date.now() - state.days * 864e5).toISOString(), area: state.anArea || null, tz: TZ };
+  const p = { date_from: new Date(Date.now() - state.days * 864e5).toISOString(), area: state.anArea || null, source: state.anSource, tz: TZ };
   const [sum, ts, hm, q] = await Promise.all([
     api('/api/stats/summary', p),
     api('/api/stats/timeseries', { ...p, bucket: 'day' }),
     api('/api/stats/heatmap', { ...p, rows: state.anArea ? 'camera' : 'area' }),
     api('/api/stats/quality', p),
   ]);
+  $('#an-source-note').textContent = state.anSource === 'demo'
+    ? 'Демо-статистика: включает синтетические записи и контрольные примеры. Не отражает реальные нарушения, точность или скорость детектора.'
+    : 'Только рабочие события. Учебные и синтетические данные исключены.';
   renderTiles(sum, q);
   const t = theme();
   chartDaily(t, ts); chartPatterns(t, sum); chartShifts(t, sum); chartHeatmap(t, hm);
@@ -443,7 +446,7 @@ function tile(label, value, sub, hero) {
 function renderTiles(sum, q) {
   const o = q.overall;
   $('#an-tiles').replaceChildren(
-    tile('Нарушений за период', fmtInt(sum.total), `за ${state.days} дней${state.anArea ? ` · ${state.anArea}` : ''}`, true),
+    tile(state.anSource === 'demo' ? 'Учебных событий за период' : 'Событий за период', fmtInt(sum.total), `за ${state.days} дней${state.anArea ? ` · ${state.anArea}` : ''}`, true),
     tile('Критичных', fmtInt(sum.by_severity.critical || 0), `ждут реакции: ${fmtInt(sum.open_critical)}`),
     tile('Точность тревог (precision)', fmtPct(o.precision), `по ${fmtInt(o.reviewed)} отметкам операторов`),
     tile('Время до тревоги, медиана', fmtMs(o.time_to_alert_ms_p50), `p95: ${fmtMs(o.time_to_alert_ms_p95)}`),
@@ -669,6 +672,7 @@ function bind() {
     loadAnalytics().catch(showError);
   }));
   ['#cap-fps', '#cap-util'].forEach((id) => $(id).addEventListener('change', () => loadSystemLive().catch(showError)));
+  $('#an-source').addEventListener('change', (e) => { state.anSource = e.target.value; loadAnalytics().catch(showError); });
   $('#an-area').addEventListener('change', (e) => { state.anArea = e.target.value; loadAnalytics().catch(showError); });
   $$('[data-table-toggle]').forEach((b) => b.addEventListener('click', () => {
     const card = b.closest('[data-chart]');

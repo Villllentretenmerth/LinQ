@@ -79,8 +79,10 @@
         <button type="button" data-days="30" class="on">30 дней</button>
         <button type="button" data-days="90">90 дней</button>
       </div>
+      <label>Данные <select id="an-source"><option value="real">Рабочие события</option><option value="demo">Демо и учебные примеры</option></select></label>
       <label>Участок <select id="an-area"><option value="">Все участки</option></select></label>
     </div>
+    <p class="muted" id="an-source-note">Только рабочие события. Учебные и синтетические данные исключены.</p>
     <div class="tiles" id="an-tiles"></div>
     <div class="grid">
       <div class="card span2" data-chart="daily"><div class="card-head"><h3>Нарушения по дням</h3><button class="link" type="button" data-table-toggle>Таблица</button></div><div class="chart" style="height:260px"></div><div class="tablebox" hidden></div></div>
@@ -115,6 +117,6 @@
 </main>
 
 <script src="vendor/echarts.min.js"></script>
-<script src="app.js?v=dataset-cuckoo-1"></script>
+<script src="app.js?v=cp3-analytics-1"></script>
 </body>
 </html>

@@ -27,7 +27,8 @@ def main():
             target.write_bytes(response.content)
         return target
     archive = download('running.zip', 'https://www.csc.kth.se/cvap/actions/running.zip')
-    entries = []
+    manifest = ROOT / 'manifest.json'
+    entries = [e for e in json.loads(manifest.read_text()) if e.get('source_group') == 'cp3'] if manifest.exists() else []
     with zipfile.ZipFile(archive) as running:
         for kind in ('fall', 'run'):
             for n in range(1, 11):

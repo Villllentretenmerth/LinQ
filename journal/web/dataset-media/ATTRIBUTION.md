@@ -25,3 +25,10 @@ The manifest records original filenames, source URLs, durations and SHA-256 of e
 These are manually selected educational examples, not detection results or workplace incident evidence.
 To reproduce: install core requirements, then from journal run
 `python -m scripts.prepare_dataset_demo --cache /path/to/download-cache`.
+
+## Team CP3 (cp3-*)
+
+Source: repository docs/demo_cp3.mp4, supplied by the user. Six distinct excerpts
+retain the original titles and annotations. Two are explicitly safe control actions.
+Trim intervals are in manifest.json; MP4 re-encoded, audio removed, JPEG previews extracted.
+These clips are team demonstration material, not additional UR Fall/KTH recordings.

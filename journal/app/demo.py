@@ -29,7 +29,7 @@ def seed_startup_events(session):
             continue
         try:
             with session.begin_nested():
-                camera_id = f'dataset-{case["pattern_id"]}'
+                camera_id = f'{case.get("source_group", "dataset")}-{case["pattern_id"]}'
                 if session.get(Camera, camera_id) is None:
                     session.add(Camera(id=camera_id, name=case['dataset'], area='Учебные видеозаписи', source=case['source_url']))
                     session.flush()

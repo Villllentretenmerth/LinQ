@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
@@ -302,26 +303,31 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
 
 # ---------- статистика для дашбордов ----------
 
+def _analytics_events(session, f, source):
+    return [e for e in _filtered(session, f)
+            if bool((e.extra or {}).get("demo")) == (source == "demo")]
+
+
 @app.get("/api/stats/summary")
-def stats_summary(f: EventFilter = Depends(), tz: str = DEFAULT_TZ, session: Session = Depends(get_session)):
-    return stats.summary(_filtered(session, f), _tz(tz))
+def stats_summary(f: EventFilter = Depends(), tz: str = DEFAULT_TZ, source: Literal["real", "demo"] = "real", session: Session = Depends(get_session)):
+    return stats.summary(_analytics_events(session, f, source), _tz(tz))
 
 
 @app.get("/api/stats/timeseries")
 def stats_timeseries(f: EventFilter = Depends(), bucket: str = Query("day", pattern="^(hour|day)$"),
-                     tz: str = DEFAULT_TZ, session: Session = Depends(get_session)):
-    return stats.timeseries(_filtered(session, f), bucket, _tz(tz))
+                     tz: str = DEFAULT_TZ, source: Literal["real", "demo"] = "real", session: Session = Depends(get_session)):
+    return stats.timeseries(_analytics_events(session, f, source), bucket, _tz(tz))
 
 
 @app.get("/api/stats/heatmap")
 def stats_heatmap(f: EventFilter = Depends(), rows: str = Query("area", pattern="^(area|camera|pattern)$"),
-                  tz: str = DEFAULT_TZ, session: Session = Depends(get_session)):
-    return stats.heatmap(_filtered(session, f), _tz(tz), rows)
+                  tz: str = DEFAULT_TZ, source: Literal["real", "demo"] = "real", session: Session = Depends(get_session)):
+    return stats.heatmap(_analytics_events(session, f, source), _tz(tz), rows)
 
 
 @app.get("/api/stats/quality")
-def stats_quality(f: EventFilter = Depends(), session: Session = Depends(get_session)):
-    return stats.quality(_filtered(session, f))
+def stats_quality(f: EventFilter = Depends(), source: Literal["real", "demo"] = "real", session: Session = Depends(get_session)):
+    return stats.quality(_analytics_events(session, f, source))
 
 
 # ---------- демо: тестовое событие для показа живой ленты ----------
