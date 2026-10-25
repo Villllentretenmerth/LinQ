@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from . import metrics, stats
+from . import metrics, stats, uploads
 from .db import Base, as_utc, engine, get_session, utcnow
 from .live import manager
 from .models import Camera, Event, StatusChange
@@ -32,10 +32,12 @@ DEMO_MODE = os.getenv("DEMO_MODE", "1") == "1"       # кнопка «тесто
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    uploads.manager = uploads.Jobs()
     ticker = asyncio.create_task(metrics.demo_ticker()) if DEMO_MODE else None  # оживляет демо-узлы
     yield
     if ticker:
         ticker.cancel()
+    uploads.manager.close()
 
 
 app = FastAPI(title="team94 — журнал событий ТБ", version="0.1.0", lifespan=lifespan)
@@ -43,6 +45,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 app.include_router(metrics.router)
+app.include_router(uploads.router)
 
 
 # ---------- вспомогательное ----------

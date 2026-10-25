@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+WORKDIR /srv
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+COPY core/requirements.txt /tmp/core-requirements.txt
+COPY journal/requirements.txt /tmp/journal-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/core-requirements.txt -r /tmp/journal-requirements.txt
+COPY core ./core
+COPY patterns ./patterns
+COPY journal/app ./journal/app
+COPY journal/client ./journal/client
+COPY journal/scripts ./journal/scripts
+COPY journal/web ./journal/web
+WORKDIR /srv/journal
+ENV MEDIA_DIR=/data/media UPLOAD_DIR=/data/uploads UPLOAD_JOURNAL_URL=http://127.0.0.1:8000
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

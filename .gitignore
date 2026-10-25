@@ -54,3 +54,6 @@ bench_*.json
 Thumbs.db
 desktop.ini
 *.log
+
+# Local uploaded sources, processing reports and evidence
+journal/uploads/
