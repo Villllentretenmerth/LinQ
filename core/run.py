@@ -35,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ignore-schedule", action="store_true", help="все карточки активны круглосуточно (для показа)")
     ap.add_argument("--max-seconds", type=float, help="остановиться через N секунд видео")
     ap.add_argument("--evidence-dir", help="куда класть кадры-доказательства и events.jsonl")
+    ap.add_argument("--no-metrics", action="store_true", help="не слать метрики узла в журнал (прогон ролика на ноутбуке для показа)")
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
 
@@ -66,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     log.info("кадры-доказательства и events.jsonl: %s", evidence)
 
     rep = None
-    if args.journal:
+    if args.journal and not args.no_metrics:
         node = cfg.get("node") or {}
         rep = MetricsReporter(args.journal, node_id=node.get("id", socket.gethostname()),
                               node_name=node.get("name"), host=socket.gethostname(),
