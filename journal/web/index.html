@@ -25,17 +25,6 @@
 <main>
   <!-- Уровни 1–2: оператор и мастер (мастер = фильтр по своему участку) -->
   <section id="tab-operator" class="tab" hidden>
-    <details class="card" style="margin-bottom:16px" id="upload-panel">
-      <summary style="cursor:pointer;padding:12px">Загрузить видео для проверки</summary>
-      <form id="video-upload-form" class="filters wrap" style="padding:12px">
-        <label>Видеофайл <input id="video-upload-file" type="file" accept=".mp4,.mov,.avi,.mkv,.webm" required></label>
-        <label>Настройки <select id="video-upload-profile"><option value="">Без зон — падение и подъём груза</option></select></label>
-        <button class="btn" type="submit" id="video-upload-submit">Проверить видео</button>
-      </form>
-      <p class="muted" style="padding:0 12px" id="video-upload-help">До 500 МБ и 10 минут. Профиль камеры выбирайте только для видео с той же сцены и тем же разрешением. В журнал попадут только обнаруженные события.</p>
-      <p style="padding:0 12px" id="video-upload-message" role="status" aria-live="polite"></p>
-      <div id="video-upload-jobs" style="padding:0 12px 12px"></div>
-    </details>
     <div id="critical-banner" class="banner" hidden role="alert"></div>
     <div class="filters">
       <label>Участок <select id="op-area"><option value="">Все участки</option></select></label>
@@ -126,6 +115,6 @@
 </main>
 
 <script src="vendor/echarts.min.js"></script>
-<script src="app.js?v=upload-1"></script>
+<script src="app.js?v=clips-1"></script>
 </body>
 </html>

@@ -200,7 +200,6 @@ function renderDetail(box, e, onChange) {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: st, user: who.value || 'оператор', comment: comment.value || null }),
         });
-        beep();
         box.dataset.submitting = '0';
         if (box.dataset.eventId === String(e.id)) {
           const field = $('.review-comment', box);
@@ -296,8 +295,7 @@ function onLive(msg) {
     if (state.opArea && e.area !== state.opArea) return;
     if (!state.feed.some((x) => x.id === e.id)) state.feed.unshift(e);
     renderFeed(e.id);
-    if (e.severity === 'critical') showBanner(e);
-    beep();
+    if (e.severity === 'critical') { showBanner(e); beep(); }
     return;
   }
   const i = state.feed.findIndex((x) => x.id === e.id);
@@ -310,31 +308,20 @@ function onLive(msg) {
 }
 
 let actx;
-async function unlockSound() {
-  if (!state.sound) return false;
+function beep() {
+  if (!state.sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') await actx.resume();
-    return actx.state === 'running';
-  } catch { return false; }
-}
-async function beep() {
-  if (!state.sound || !(await unlockSound()) || !state.sound) return;
-  // Clock-style cuckoo: a descending major third, short breathy notes, 0.6 s total.
-  const t = actx.currentTime;
-  [[0, 784], [0.29, 622]].forEach(([delay, frequency]) => {
-    const tone = actx.createOscillator();
-    const gain = actx.createGain();
-    tone.type = 'sine';
-    tone.frequency.setValueAtTime(frequency * 1.025, t + delay);
-    tone.frequency.exponentialRampToValueAtTime(frequency, t + delay + 0.07);
-    tone.connect(gain); gain.connect(actx.destination);
-    gain.gain.setValueAtTime(0, t + delay);
-    gain.gain.linearRampToValueAtTime(0.32, t + delay + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.24);
-    tone.start(t + delay); tone.stop(t + delay + 0.26);
-    tone.onended = () => { tone.disconnect(); gain.disconnect(); };
-  });
+    const t = actx.currentTime;
+    [[0, 880], [0.25, 660]].forEach(([d, f]) => {
+      const o = actx.createOscillator(); const g = actx.createGain();
+      o.frequency.value = f; o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.2, t + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.2);
+      o.start(t + d); o.stop(t + d + 0.22);
+    });
+  } catch { /* браузер не дал звук без действия пользователя */ }
 }
 
 /* ---------- 3. Журнал ---------- */
@@ -639,9 +626,6 @@ async function loadSystem() {
 
 /* ---------- запуск ---------- */
 function bind() {
-  document.addEventListener('pointerdown', unlockSound);
-  document.addEventListener('keydown', unlockSound);
-  initUploads();
   window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
   $('#op-area').addEventListener('change', (e) => { state.opArea = e.target.value; storeSet('opArea', state.opArea); loadFeed().catch(showError); });
   $$('[data-op-scope]').forEach((b) => b.addEventListener('click', () => {
@@ -653,7 +637,6 @@ function bind() {
     state.sound = !state.sound;
     e.target.textContent = state.sound ? 'Звук: вкл' : 'Звук: выкл';
     e.target.setAttribute('aria-pressed', String(state.sound));
-    if (state.sound) beep();
   });
   $('#simulate').addEventListener('click', () => api('/api/dev/simulate', {}, { method: 'POST' }).catch(showError));
   $('#j-filters').addEventListener('submit', (e) => { e.preventDefault(); state.jOffset = 0; loadJournal().catch(showError); });
@@ -695,75 +678,3 @@ async function init() {
   showTab(location.hash.slice(1) || 'operator');
 }
 init();
-
-/* Uploaded recordings are processed, not inserted as fabricated events. */
-async function initUploads() {
-  const form = $('#video-upload-form'), submit = $('#video-upload-submit');
-  const message = $('#video-upload-message'), jobs = $('#video-upload-jobs');
-  let ids;
-  try { ids = JSON.parse(storeGet('videoJobs', '[]')).filter(x => /^[a-f0-9]{32}$/.test(x)).slice(0, 10); }
-  catch { ids = []; }
-  let timer, polling = false;
-  async function refresh() {
-    if (polling) return;
-    polling = true;
-    let pending = false;
-    try {
-      const rows = await Promise.all(ids.map(async id => {
-        try {
-          const job = await api(`/api/uploads/${id}`);
-          const active = ['queued', 'processing'].includes(job.state);
-          pending ||= active;
-          const links = (job.result?.event_ids || []).map(eventId => el('button', {
-            class: 'btn ghost', type: 'button', onclick: () => selectEvent(eventId),
-          }, `Событие №${eventId}`));
-          return el('div', {class: 'card', style: 'padding:10px;margin-top:8px'},
-            el('strong', {}, job.filename), el('p', {}, job.message,
-              job.state === 'processing' && job.progress != null ? ` ${job.progress}%` : ''),
-            ...(job.result ? [el('p', {class:'muted'}, `Проверены сценарии: ${job.result.patterns.join(', ')}. Отсутствие срабатываний не гарантирует отсутствие нарушений.`)] : []), ...links);
-        } catch {
-          pending = true;
-          return el('p', {}, 'Не удалось получить состояние загрузки. Повторяем подключение…');
-        }
-      }));
-      jobs.replaceChildren(...rows);
-    } finally {
-      polling = false;
-      clearTimeout(timer);
-      if (pending) timer = setTimeout(refresh, 3000);
-    }
-  }
-  try {
-    const opts = await api('/api/uploads/options');
-    if (!opts.available) { submit.disabled = true; message.textContent = opts.message; }
-    for (const p of opts.profiles || []) $('#video-upload-profile').append(el('option', {value:p.id}, p.name));
-  } catch { message.textContent = 'Не удалось проверить готовность обработчика. Обновите страницу.'; submit.disabled = true; }
-  form.addEventListener('submit', async ev => {
-    ev.preventDefault();
-    const file = $('#video-upload-file').files[0];
-    if (!file) return;
-    if (file.size > 500 * 1024 * 1024) { message.textContent = 'Максимальный размер файла — 500 МБ.'; return; }
-    submit.disabled = true;
-    message.textContent = 'Передача видео на сервер…';
-    const data = new FormData(); data.append('file', file); data.append('profile', $('#video-upload-profile').value);
-    try {
-      const job = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/uploads');
-        xhr.upload.onprogress = e => { if (e.lengthComputable) message.textContent = `Передача видео: ${Math.round(e.loaded/e.total*100)}%`; };
-        xhr.onerror = () => reject(new Error('Не удалось передать видео. Проверьте соединение.'));
-        xhr.onload = () => {
-          let body; try { body = JSON.parse(xhr.responseText); } catch { body = {}; }
-          xhr.status === 202 ? resolve(body) : reject(new Error(typeof body.detail === 'string' ? body.detail : 'Сервер не принял видео.'));
-        };
-        xhr.send(data);
-      });
-      ids = [job.id, ...ids].slice(0, 10); storeSet('videoJobs', JSON.stringify(ids));
-      message.textContent = 'Видео принято. Можно оставаться на странице или вернуться позже.';
-      $('#video-upload-file').value = '';
-      beep(); await refresh();
-    } catch (err) { message.textContent = err.message; }
-    finally { submit.disabled = false; }
-  });
-  await refresh();
-}
