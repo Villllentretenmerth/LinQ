@@ -37,6 +37,8 @@ core/data/
 # Скачанные из Jupyter результаты замеров (итог — в README и docs/changes_cp3.md)
 bench_result*.json
 bench_*.json
+# …кроме итогового замера каскада на TPU — его можно загрузить в журнал без доступа к LinQ
+!bench/results/*.json
 
 # ---------- Секреты и доступы (VPN, ключи) — никогда в гит ----------
 *.ovpn

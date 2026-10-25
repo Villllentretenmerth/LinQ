@@ -20,6 +20,17 @@ TPU хакатона — облачный: Jupyter (`hackathon.lin-q.ru`, чер
    `python -m scripts.import_metrics bench_result.json --url http://localhost:8000`.
 5. Когда организаторы вернут `yolov8n-pose_head.tpu` (и `yolov8n_head.tpu`) — положить рядом и выполнить раздел 5.
 
+## Готовый замер (без доступа к LinQ)
+
+`results/bench_cascade.json` — наш замер на TPU хакатона 24.10: yolov8n-pose на каждом кадре + yolov8n на каждом 3-м,
+свои программы `.tpu` (int8, O5), 100 кадров. Чтобы увидеть его на вкладке «Система», запустите журнал и из папки `journal`:
+
+```bash
+python -m scripts.import_metrics ../bench/results/bench_cascade.json --url http://localhost:8000
+```
+
+Узел появится как «LinQ TPU хакатона (облако)». Сырые цифры (p50/p95, полный круг) — в разделе `raw` того же файла.
+
 ## Что меряется
 
 - **Время на TPU** (`tpu_ms`) — воркер присылает `inference_time`; из него считаются загрузка TPU и запас по камерам.
