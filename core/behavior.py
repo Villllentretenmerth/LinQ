@@ -12,6 +12,9 @@
     есть      — 1, если в этот момент у трека был кадр, иначе 0 (пропуск трекера)            — 1
 Калибровка пола в признаки не входит: в чужих датасетах её нет, и модель не должна от неё зависеть.
 
+Версия признаков 2 (core/behavior_v2.py) — модель на открытых данных NTU60 + HMDB51 + KTH: окно (85, T) по точкам
+скелета и их скорости. Какая версия у модели — записано в её метаданных; конвейер строит окно нужной версии сам.
+
 Модель считается раз в STRIDE_SEC на трек (как и шаг подтверждения в Confirmer), результат кэшируется в истории
 трека, все карточки читают один и тот же ответ.
 """
@@ -22,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
+from . import behavior_v2
 from .features import KP_CONF, L_HIP, R_HIP, TrackHistory, bottom_center, box_center, kp
 
 log = logging.getLogger("core.behavior")
@@ -103,9 +107,11 @@ class BehaviorModel:
         meta = self.sess.get_modelmeta().custom_metadata_map
         self.classes: list[str] = json.loads(meta["classes"])
         shape = json.loads(meta.get("input_shape", f"[{T}, {FEATURES}]"))
-        if tuple(shape) != (T, FEATURES) or int(meta.get("feature_version", 0)) != FEATURE_VERSION:
+        self.version = int(meta.get("feature_version", 0))
+        expected = {FEATURE_VERSION: (T, FEATURES), 2: (behavior_v2.CHANNELS, behavior_v2.T)}
+        if self.version not in expected or tuple(shape) != expected[self.version]:
             raise ValueError(f"{path}: модель обучена на окнах {shape}, версия признаков "
-                             f"{meta.get('feature_version')}, а конвейер строит [{T}, {FEATURES}] версии {FEATURE_VERSION}")
+                             f"{meta.get('feature_version')}, а конвейер строит {expected}")
         self.name = meta.get("name", "behavior_v1")
         self.enabled: set[str] = set(self.classes)   # какие классы карточки берут у модели, остальные — по правилам
         self.timer = None             # rep.timer узла: время инференса уходит в метрики под именем модели
@@ -115,7 +121,7 @@ class BehaviorModel:
         cache = getattr(h, "_behavior", None)
         if cache is not None and h.last_ts - cache[0] < STRIDE_SEC - 1e-6:
             return cache[1]
-        x = window_tensor(h)
+        x = window_tensor(h) if self.version == FEATURE_VERSION else behavior_v2.window_from_history(h)
         p = None
         if x is not None:
             with (self.timer(self.name) if self.timer else nullcontext()):

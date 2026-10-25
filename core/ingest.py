@@ -23,7 +23,21 @@ from typing import Iterator
 import cv2
 import numpy as np
 
-os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay")
+# Опции низкой задержки — ТОЛЬКО для сетевых потоков. Глобально они ломают чтение файлов с телефона
+# (H.264/HEVC с B-кадрами): из ролика на 14 с читалось 5–6 с, и половина событий не доходила до карточек.
+RTSP_OPTIONS = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
+
+
+def _open_stream(url: str):
+    prev = os.environ.get("OPENCV_FFMPEG_CAPTURE_OPTIONS")
+    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = RTSP_OPTIONS
+    try:
+        return cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+    finally:
+        if prev is None:
+            os.environ.pop("OPENCV_FFMPEG_CAPTURE_OPTIONS", None)
+        else:
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = prev
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
 
@@ -56,7 +70,7 @@ class LatestFrameReader:
 
     def _open(self):
         src = int(self.url) if str(self.url).isdigit() else self.url   # «0» — веб-камера
-        cap = cv2.VideoCapture(src) if isinstance(src, int) else cv2.VideoCapture(src, cv2.CAP_FFMPEG)
+        cap = cv2.VideoCapture(src) if isinstance(src, int) else _open_stream(src)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         return cap
 
