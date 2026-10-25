@@ -12,16 +12,6 @@ patterns_dir: patterns                 # карточки нарушений (о
 lost_sec: 2.0                          # трек пропал дольше — его события закрываются (end_event)
 end_after_sec: 10                      # нарушение не видно столько секунд, а трек ещё в кадре — событие закрывается
 
-# Clip window is taken from each pattern's evidence.clip_sec, relative to confirmation.
-clips:
-  enabled: true
-  fps: 10
-  max_width: 960
-  buffer_sec: 30               # includes margin for delayed inference
-  max_buffer_mb: 64            # JPEG ring per camera
-  max_clip_mb: 32              # frames retained per event
-  max_pending: 8               # collecting + queued + encoding per camera
-
 models:
   # onnx      — целые модели на CPU (разработка);
   # onnx_head — головы *_head.onnx на CPU + декодирование на numpy: тот же путь данных, что с TPU;

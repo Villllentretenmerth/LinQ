@@ -20,7 +20,7 @@ from . import metrics, stats
 from .db import Base, as_utc, engine, get_session, utcnow
 from .live import manager
 from .models import Camera, Event, StatusChange
-from .schemas import EventDetail, EventEnd, EventIn, EventOut, EventPage, EventUpdate, StatusIn
+from .schemas import EventDetail, EventEnd, EventIn, EventOut, EventPage, StatusIn
 
 MEDIA_DIR = Path(os.getenv("MEDIA_DIR", "./media"))
 WEB_DIR = Path(os.getenv("WEB_DIR", Path(__file__).resolve().parent.parent / "web"))
@@ -167,23 +167,6 @@ async def create_event(body: EventIn, session: Session = Depends(get_session)):
     return out
 
 
-def merge_extra(base: dict, update: dict) -> dict:
-    merged = dict(base or {})
-    for key, value in update.items():
-        merged[key] = merge_extra(merged[key], value) if isinstance(value, dict) and isinstance(merged.get(key), dict) else value
-    return merged
-
-
-@app.patch("/api/events/{event_id}", response_model=EventOut)
-async def update_event(event_id: int, body: EventUpdate, session: Session = Depends(get_session)):
-    e = _get_event(session, event_id)
-    e.extra = merge_extra(e.extra, body.extra)
-    session.commit()
-    out = to_out(e)
-    await manager.broadcast({"type": "event_updated", "event": out.model_dump(mode="json")})
-    return out
-
-
 @app.post("/api/events/{event_id}/end", response_model=EventOut)
 async def end_event(event_id: int, body: EventEnd, session: Session = Depends(get_session)):
     e = _get_event(session, event_id)
@@ -203,27 +186,14 @@ async def upload_media(event_id: int, kind: str = Query("snapshot", pattern="^(s
     folder = MEDIA_DIR / "events" / str(event_id)
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / f"{kind}{ext}"
-    # Atomic replacement: a browser must never see a half-written clip.
-    import uuid
-    temporary = target.with_name(f".{uuid.uuid4().hex}.upload")
-    try:
-        with temporary.open("wb") as output:
-            while chunk := await file.read(1024 * 1024):
-                output.write(chunk)
-        temporary.replace(target)
-    finally:
-        temporary.unlink(missing_ok=True)
-        await file.close()
+    target.write_bytes(await file.read())
     url = f"/media/events/{event_id}/{target.name}"
     if kind == "snapshot":
         e.snapshot_path = url
     else:
         e.clip_path = url
-        e.extra = merge_extra(e.extra, {"clip": {"state": "ready"}})
     session.commit()
-    out = to_out(e)
-    await manager.broadcast({"type": "event_media_updated", "event": out.model_dump(mode="json")})
-    return out
+    return to_out(e)
 
 
 # ---------- события: реакция оператора ----------

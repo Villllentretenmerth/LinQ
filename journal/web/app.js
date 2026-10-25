@@ -145,7 +145,7 @@ async function selectEvent(id) {
   state.selected = id;
   $$('#feed li').forEach((li) => li.classList.toggle('sel', Number(li.dataset.id) === id));
   const e = await api(`/api/events/${id}`);
-  if (state.selected === id) renderDetail($('#op-detail'), e, onStatusChanged);
+  renderDetail($('#op-detail'), e, onStatusChanged);
 }
 
 function onStatusChanged(e) {
@@ -161,69 +161,32 @@ function onStatusChanged(e) {
 function fact(label, value) { return el('div', {}, el('dt', {}, label), el('dd', {}, value ?? '—')); }
 
 function renderDetail(box, e, onChange) {
-  const sameEvent = box.dataset.eventId === String(e.id);
-  const previousWho = sameEvent ? $('.review-who', box)?.value : null;
-  const previousComment = sameEvent ? $('.review-comment', box)?.value : null;
-  const oldVideo = sameEvent ? $('video', box) : null;
-  box.dataset.eventId = String(e.id);
   box.className = 'detail';
-  const clipInfo = e.extra?.clip || {};
-  let clip;
-  if (e.clip_path) {
-    const player = oldVideo?.getAttribute('src') === e.clip_path ? oldVideo : el('video', {
-      src: e.clip_path, controls: true, playsinline: true, preload: 'metadata',
-      'aria-label': 'Видео события', style: 'width:100%;max-height:420px;background:#111',
-    });
-    clip = el('section', { class: 'event-clip' }, el('h3', {}, 'Видео события'), player,
-      clipInfo.partial ? el('p', { class: 'muted' }, 'Сохранён доступный фрагмент: начало или конец записи ограничены.') : null,
-      el('a', { href: e.clip_path, download: true, class: 'btn ghost' }, 'Скачать клип'));
-  } else {
-    const messages = { recording: 'Записывается видео после события…', encoding: 'Подготавливается видеоклип…',
-      failed: 'Не удалось подготовить клип. Кадр и событие сохранены.' };
-    clip = el('p', { class: 'clip-status muted', role: 'status' }, messages[clipInfo.state] || 'Видеоклип не приложен');
-  }
   const shot = el('div', { class: e.snapshot_path ? 'shot' : 'shot none' },
     e.snapshot_path ? el('img', { src: e.snapshot_path, alt: `Кадр: ${e.pattern_name}, ${e.camera_id}` })
       : 'Кадр-доказательство не приложен');
-  const who = el('input', { type: 'text', class: 'review-who', value: previousWho ?? storeGet('who', 'оператор-1'), 'aria-label': 'Кто реагирует', style: 'flex:0 1 160px' });
-  const comment = el('input', { type: 'text', class: 'review-comment', value: previousComment ?? '', placeholder: 'Комментарий (необязательно)', 'aria-label': 'Комментарий' });
+  const who = el('input', { type: 'text', value: storeGet('who', 'оператор-1'), 'aria-label': 'Кто реагирует', style: 'flex:0 1 160px' });
+  const comment = el('input', { type: 'text', placeholder: 'Комментарий (необязательно)', 'aria-label': 'Комментарий' });
   const buttons = ACTIONS.filter(([st]) => st !== e.status).map(([st, label], i) => el('button', {
-    class: i === 0 ? 'btn' : 'btn ghost', type: 'button', disabled: box.dataset.submitting === '1',
+    class: i === 0 ? 'btn' : 'btn ghost', type: 'button',
     onclick: async (ev) => {
-      if (box.dataset.submitting === '1') return;
-      box.dataset.submitting = '1';
-      $$('.actions button', box).forEach((b) => { b.disabled = true; });
-      $('.review-error', box).textContent = '';
+      ev.target.disabled = true;
       storeSet('who', who.value || 'оператор');
       try {
         const upd = await api(`/api/events/${e.id}/status`, {}, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: st, user: who.value || 'оператор', comment: comment.value || null }),
         });
-        box.dataset.submitting = '0';
-        if (box.dataset.eventId === String(e.id)) {
-          const field = $('.review-comment', box);
-          if (field) field.value = '';
-          renderDetail(box, upd, onChange);
-          $('.review-error', box).textContent = 'Решение сохранено на сервере.';
-        }
+        renderDetail(box, upd, onChange);
         onChange && onChange(upd);
-      } catch (err) {
-        box.dataset.submitting = '0';
-        $$('.actions button', box).forEach((b) => { b.disabled = false; });
-        $('.review-error', box).textContent = 'Не удалось сохранить решение. Проверьте связь и актуальный статус события.';
-        showError(err);
-      }
+      } catch (err) { ev.target.disabled = false; showError(err); }
     },
   }, label));
   const cats = (e.categories || []).map((c) => CAT_RU[c] || c).join(' + ') || '—';
-  box.replaceChildren(...[
+  box.replaceChildren(
     el('div', { class: 'row', style: 'display:flex;gap:8px;align-items:center' }, sevBadge(e.severity), statusChip(e.status)),
     el('h2', {}, e.pattern_name),
     shot,
-    clip,
-    e.extra?.followup ? el('p', { class: 'event-followup' },
-      `Уточнение: ${e.extra.followup.condition || 'Обнаружено продолжение события'}`) : null,
     el('dl', { class: 'facts' },
       fact('Камера', e.camera_id), fact('Участок', e.area), fact('Зона', e.zone || '—'),
       fact('Трек', e.track_id ?? '—'), fact('Уверенность', fmtPct(e.confidence)), fact('Категории', cats),
@@ -232,12 +195,11 @@ function renderDetail(box, e, onChange) {
       fact('Окончание', fmtTime(e.ended_at)),
       fact('Кто отреагировал', e.reviewed_by ? `${e.reviewed_by}, ${fmtTime(e.reviewed_at)}` : '—')),
     el('div', { class: 'actions' }, who, comment, ...buttons),
-    el('p', { class: 'review-error muted', role: 'status', 'aria-live': 'polite' }),
     (e.history && e.history.length)
       ? el('ol', { class: 'history' }, ...e.history.map((h) => el('li', {},
         `${fmtTime(h.at)} — ${h.user}: ${STATUS_RU[h.from_status] || h.from_status} → ${STATUS_RU[h.to_status] || h.to_status}${h.comment ? ` («${h.comment}»)` : ''}`)))
       : el('p', { class: 'muted' }, 'Реакций пока не было'),
-  ].filter((item) => item != null));
+  );
 }
 
 function showBanner(e) {
@@ -257,40 +219,12 @@ function setLive(on) {
 }
 function connectWS() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/events`);
-  ws.onopen = () => {
-    setLive(true);
-    // Recover events/media missed while disconnected.
-    loadFeed().catch(showError);
-    refreshOpenDetails();
-    if (state.tab === 'journal') loadJournal().catch(showError);
-  };
+  ws.onopen = () => setLive(true);
   ws.onclose = () => { setLive(false); setTimeout(connectWS, 2000); };
   ws.onmessage = (m) => { try { onLive(JSON.parse(m.data)); } catch (err) { showError(err); } };
 }
-async function refreshDetail(box, id, onChange) {
-  const version = (Number(box.dataset.refreshVersion) || 0) + 1;
-  box.dataset.refreshVersion = String(version);
-  try {
-    const e = await api(`/api/events/${id}`);
-    if (box.dataset.eventId === String(id) && box.dataset.refreshVersion === String(version)) {
-      renderDetail(box, e, onChange);
-    }
-  } catch (err) { showError(err); }
-}
-function refreshOpenDetails(eventId = null) {
-  const op = $('#op-detail');
-  if (op.dataset.eventId && state.tab === 'operator' && (!eventId || Number(op.dataset.eventId) === eventId)) {
-    refreshDetail(op, Number(op.dataset.eventId), onStatusChanged);
-  }
-  const drawer = $('#drawer-body');
-  if (!$('#drawer').hidden && drawer.dataset.eventId && (!eventId || Number(drawer.dataset.eventId) === eventId)) {
-    refreshDetail(drawer, Number(drawer.dataset.eventId), () => loadJournal().catch(showError));
-  }
-}
 function onLive(msg) {
   const e = msg.event;
-  if (!e) return;
-  if (state.tab === 'journal') loadJournal().catch(showError);
   if (msg.type === 'event_created') {
     if (state.opArea && e.area !== state.opArea) return;
     if (!state.feed.some((x) => x.id === e.id)) state.feed.unshift(e);
@@ -304,7 +238,7 @@ function onLive(msg) {
     renderFeed();
   }
   if (state.banner === e.id && e.status !== 'new') hideBanner();
-  refreshOpenDetails(e.id);
+  if (state.selected === e.id && state.tab === 'operator') selectEvent(e.id);
 }
 
 let actx;
