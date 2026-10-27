@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         stop.set()
     for t in threads:
-        t.join(timeout=10)
+        t.join()  # camera shutdown drains clip encoders before closing the upload queue
 
     sink.close()
     if rep:

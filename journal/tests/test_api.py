@@ -29,8 +29,10 @@ def ev(**kw):
 @pytest.fixture(scope="module")
 def client():
     Base.metadata.drop_all(engine)
-    with TestClient(app) as c:
-        yield c
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("app.main.DEMO_SEED", False)
+        with TestClient(app) as c:
+            yield c
     Base.metadata.drop_all(engine)
 
 
@@ -150,3 +152,38 @@ def test_demo_metrics_seed(client):
     nodes = {n["id"]: n for n in client.get("/api/metrics/nodes").json()}
     d = nodes["linq-node-1"]
     assert d["source"] == "demo" and 0 < d["latest"]["tpu_util"] < 1 and d["capacity"]["max_streams"] > 0
+
+
+def test_clip_updates_live_and_operator_decision_survives(client):
+    with client.websocket_connect('/ws/events') as ws:
+        e = client.post('/api/events', json=ev(event_uid='clip-test', extra={
+            'backend': 'onnx', 'clip': {'state': 'recording', 'requested_before_sec': 3}})).json()
+        assert ws.receive_json()['type'] == 'event_created'
+        eid = e['id']
+        r = client.patch(f'/api/events/{eid}', json={'extra': {'clip': {'state': 'encoding'}}})
+        assert r.status_code == 200
+        assert ws.receive_json()['event']['extra']['clip']['state'] == 'encoding'
+        assert r.json()['extra']['clip']['requested_before_sec'] == 3
+        r = client.post(f'/api/events/{eid}/media', params={'kind': 'clip'},
+                        files={'file': ('clip.mp4', b'video-bytes', 'video/mp4')})
+        assert r.status_code == 200
+        message = ws.receive_json()
+        assert message['type'] == 'event_media_updated'
+        assert message['event']['extra']['clip']['state'] == 'ready'
+        url = r.json()['clip_path']
+        assert client.get(url).content == b'video-bytes'
+        assert client.get(url, headers={'Range': 'bytes=0-4'}).status_code == 206
+        client.post(f'/api/events/{eid}/status', json={
+            'status': 'confirmed', 'user': 'tester', 'comment': 'Reviewed video'})
+        assert ws.receive_json()['event']['status'] == 'confirmed'
+        client.patch(f'/api/events/{eid}', json={'extra': {
+            'followup': {'condition': 'Неподвижен 10 с'}, 'clip': {'partial': True}}})
+        assert ws.receive_json()['event']['extra']['followup']['condition'] == 'Неподвижен 10 с'
+        detail = client.get(f'/api/events/{eid}').json()
+        assert detail['status'] == 'confirmed' and detail['clip_path'] == url
+        assert detail['history'][0]['comment'] == 'Reviewed video'
+        assert detail['history'][0]['at'].endswith(('Z', '+00:00'))
+        assert detail['extra']['backend'] == 'onnx'
+        assert detail['extra']['clip']['state'] == 'ready'
+        assert client.patch(f'/api/events/{eid}', json={'status': 'false_alarm'}).status_code == 422
+        assert client.patch('/api/events/999999', json={'extra': {}}).status_code == 404

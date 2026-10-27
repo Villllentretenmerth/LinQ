@@ -12,6 +12,7 @@ import numpy as np
 
 from .behavior import BehaviorModel
 from .features import floor_homography
+from .clips import ClipRecorder, clip_window
 from .engine import CompileEnv, FrameContext, Obj, build_engine, load_cards
 from .geometry import Scene
 from .infer import COCO80, DetModel, PoseModel, make_backend
@@ -123,13 +124,34 @@ class CameraPipeline:
         self.events = 0
         self.t_start = None
         self._first_ts: float | None = None
+        self.clips = None
+        self._capture_buffers_clips = False
+        clip_cfg = {**(cfg.get("clips") or {}), **(cam.get("clips") or {})}
+        windows = [clip_window(c.evidence) for c in self.engine.cards]
+        windows = [w for w in windows if w is not None]
+        if sink and windows and clip_cfg.get("enabled", True):
+            self.clips = ClipRecorder(
+                sink.evidence_dir / "clips", sink.clip, sink.update,
+                fps=clip_cfg.get("fps", 10), max_width=clip_cfg.get("max_width", 960),
+                buffer_sec=max(float(clip_cfg.get("buffer_sec", 30)), max(w[0] for w in windows)),
+                max_buffer_mb=clip_cfg.get("max_buffer_mb", 64),
+                max_clip_mb=clip_cfg.get("max_clip_mb", 32), max_pending=clip_cfg.get("max_pending", 8),
+            )
 
     # ---------- цикл ----------
 
     def run(self) -> None:
         if self.sink:
             self.sink.register_camera(self.id, self.name, self.area, str(self.cam["source"]))
-        frames, reader = open_source(self.source, self.fps, self.offline, bool(self.cam.get("loop")))
+        reader = None
+        try:
+            frames, reader = open_source(self.source, self.fps, self.offline, bool(self.cam.get("loop")),
+                                         on_frame=self.clips.add_frame if self.clips else None)
+        except Exception:
+            if self.clips:
+                self.clips.close()
+            raise
+        self._capture_buffers_clips = reader is not None
         log.info("[%s] старт: %s, %g FPS обработки, режим %s", self.id, self.source, self.fps,
                  "офлайн (покадрово)" if self.offline else "реального времени")
         last: Frame | None = None
@@ -150,11 +172,15 @@ class CameraPipeline:
                     self.emit(a, last, None)
             if reader is not None:
                 reader.close()
+            if self.clips:
+                self.clips.close()  # finish partial EOF clips, then drain background encoding
             wall = time.time() - self.t_start
             log.info("[%s] стоп: %d кадров за %.1f с (%.1f кадр/с), событий: %d", self.id, self.n, wall,
                      self.n / max(wall, 1e-6), self.events)
 
     def process(self, fr: Frame) -> None:
+        if self.clips and not self._capture_buffers_clips:
+            self.clips.add_frame(fr.image, fr.ts)  # offline replay uses source timestamps
         if self._first_ts is None:
             self._first_ts = fr.ts
             if self.persons.floor is not None:
@@ -202,6 +228,10 @@ class CameraPipeline:
             extra = {**a.extra, "source": "pipeline", "backend": self.models.backend,
                      "time_mode": "offline" if self.offline else "realtime",
                      "frame_size": [int(fr.image.shape[1]), int(fr.image.shape[0])]}
+            window = clip_window(card.evidence) if self.clips else None
+            if window is not None:
+                extra["clip"] = {"state": "recording", "requested_before_sec": window[0],
+                                 "requested_after_sec": window[1]}
             if a.other_label:
                 extra["other"] = {"label": a.other_label, "bbox": a.other_bbox}
             payload = dict(pattern_id=card.id, pattern_name=card.name, categories=card.categories,
@@ -213,6 +243,8 @@ class CameraPipeline:
                         now - (a.started_ts + offset))
             if self.sink:
                 self.sink.create(a.key, payload, snap)
+                if window is not None:
+                    self.clips.request(a.key, fr.ts, *window)
         elif a.kind == "update":
             log.warning("[%s] %s, трек %d: %s", self.id, card.id, a.track_id, a.extra.get("followup", {}).get("condition"))
             if self.sink:
